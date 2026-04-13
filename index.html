@@ -1,0 +1,611 @@
+<!DOCTYPE html>
+
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>PharmaCalc</title>
+<!-- PWA / iOS -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="PharmaCalc">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#1d4ed8">
+<meta name="description" content="Calculadora de doses e bombas de infusão — Anestesia e UTI">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f5f5f0;color:#1a1a1a;font-size:14px;min-height:100vh;padding-bottom:env(safe-area-inset-bottom)}
+#app{max-width:680px;margin:0 auto;padding:0 16px 60px}
+.header{padding:16px 0 14px;border-bottom:1px solid #e0ddd6;margin-bottom:18px;display:flex;align-items:center;gap:12px}
+.logo{width:34px;height:34px;border-radius:8px;background:#dbeafe;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
+.app-title{font-family:monospace;font-size:14px;font-weight:600}
+.app-sub{font-size:11px;color:#888}
+input,select,textarea{font-family:inherit;font-size:15px;color:#1a1a1a;background:#fff;border:1px solid #d0cec8;border-radius:8px;padding:10px 12px;width:100%;outline:none;transition:border-color .15s;-webkit-appearance:none}
+input:focus,select:focus,textarea:focus{border-color:#6b7280}
+button{font-family:inherit;cursor:pointer;transition:opacity .15s}
+button:active{opacity:.7}
+.btn{background:#fff;border:1px solid #d0cec8;border-radius:8px;padding:8px 14px;font-size:13px;color:#1a1a1a}
+.btn-act{background:#dbeafe;border-color:#93c5fd;color:#1d4ed8}
+.btn-sm{padding:6px 11px;font-size:12px}
+.lbl{display:block;font-size:11px;color:#888;margin-bottom:5px;letter-spacing:.4px;text-transform:uppercase}
+.field{margin-bottom:14px}
+.search-wrap{position:relative;margin-bottom:14px}
+.search-wrap input{padding-left:34px}
+.search-icon{position:absolute;left:11px;top:50%;transform:translateY(-50%);color:#aaa;font-size:16px;pointer-events:none}
+.cats{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px}
+.cat-btn{background:#fff;border:1px solid #e0ddd6;border-radius:20px;padding:5px 12px;font-size:12px;color:#555}
+.cat-btn.active{background:#dbeafe;border-color:#93c5fd;color:#1d4ed8}
+.drug-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px}
+.drug-card{background:#fff;border:1px solid #e0ddd6;border-radius:10px;padding:10px 12px;cursor:pointer;text-align:left;border-left-width:3px;transition:background .1s}
+.drug-card:hover{background:#f9f9f6}
+.drug-abbr{font-family:monospace;font-size:10px;font-weight:600;margin-bottom:4px}
+.drug-name{font-size:12px;font-weight:600;line-height:1.3;margin-bottom:3px}
+.drug-unit{font-family:monospace;font-size:10px;color:#888}
+.tci-badge{display:inline-block;font-size:9px;background:#dbeafe;color:#1d4ed8;border-radius:4px;padding:1px 4px;margin-left:3px;font-family:monospace;font-weight:600;vertical-align:middle}
+.add-card{background:#fff;border:1px dashed #ccc;border-radius:10px;padding:10px;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;color:#999;font-size:12px;min-height:70px}
+.back-row{display:flex;align-items:center;gap:10px;margin-bottom:18px}
+.drug-heading{font-size:17px;font-weight:600;flex:1}
+.drug-meta{font-size:11px;color:#888;font-family:monospace;margin-top:2px}
+.note-card{border:1px solid #e0ddd6;border-radius:10px;padding:13px 15px;margin-bottom:16px;border-left-width:3px;background:#fff}
+.note-card ul{list-style:none;padding:0;margin:0}
+.note-card ul li{font-size:12px;color:#444;line-height:1.6;padding:3px 0 3px 16px;position:relative;border-bottom:0.5px solid #f0ede6}
+.note-card ul li:last-child{border-bottom:none}
+.note-card ul li::before{content:"·";position:absolute;left:4px;color:#aaa;font-size:14px;line-height:1.4}
+.note-card ul li b{font-weight:600;color:#1a1a1a}
+.prep-list{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
+.prep-btn{background:#fff;border:1px solid #d0cec8;border-radius:8px;padding:8px 14px;font-size:13px;color:#1a1a1a;text-align:left;cursor:pointer}
+.prep-btn .conc{font-family:monospace;font-size:10px;color:#888;margin-top:3px}
+.prep-btn.active{background:#dbeafe;border-color:#93c5fd}
+.prep-btn.active .conc{color:#1d4ed8}
+.mode-row{display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap}
+.num-wrap{position:relative}
+.num-wrap input{font-size:22px;padding:12px 70px 12px 14px;font-family:monospace}
+.num-wrap .uhint{position:absolute;right:12px;top:50%;transform:translateY(-50%);font-size:11px;color:#aaa;pointer-events:none;text-align:right;line-height:1.3;max-width:62px}
+.result-box{border:1px solid #86efac;border-radius:10px;padding:16px 18px;background:#f0fdf4}
+.result-box.warn{border-color:#fde68a;background:#fffbeb}
+.result-box.info{border-color:#93c5fd;background:#eff6ff}
+.result-box.empty{border-color:#e0ddd6;background:#fafaf8}
+.result-lbl{font-size:11px;color:#666;margin-bottom:6px;letter-spacing:.4px;text-transform:uppercase}
+.result-val{font-family:monospace;font-size:36px;font-weight:700;color:#15803d;letter-spacing:-1px}
+.result-val.warn{color:#b45309}
+.result-val.info{color:#1d4ed8}
+.result-val.empty{color:#bbb;font-size:18px;font-weight:400;letter-spacing:0}
+.result-unit{font-size:14px;margin-left:6px;opacity:.7;font-weight:400}
+.range-badge{border:1px solid #fde68a;border-radius:8px;padding:8px 12px;margin-top:8px;font-size:12px;color:#92400e;background:#fffbeb}
+.range-badge.ok{border-color:#86efac;color:#14532d;background:#f0fdf4}
+.range-badge.low{border-color:#93c5fd;color:#1e3a8a;background:#eff6ff}
+.tci-card{border:1px solid #e0ddd6;border-radius:10px;background:#fff;overflow:hidden;margin-top:4px}
+.tci-table{width:100%;border-collapse:collapse}
+.tci-table th{font-size:10px;color:#888;letter-spacing:.4px;text-transform:uppercase;padding:10px 14px;text-align:left;border-bottom:1px solid #f0ede6;background:#fafaf8;font-weight:500}
+.tci-table td{padding:11px 14px;border-bottom:0.5px solid #f0ede6;font-size:13px;vertical-align:middle}
+.tci-table tr:last-child td{border-bottom:none}
+.tci-rate{font-family:monospace;font-size:20px;font-weight:700;color:#1d4ed8}
+.tci-cp{font-family:monospace;font-size:12px;color:#666}
+.tci-phase b{font-weight:600;color:#1a1a1a;display:block;font-size:12px}
+.tci-phase{font-size:11px;color:#888}
+.tci-note{font-size:11px;color:#999;padding:10px 14px;border-top:0.5px solid #f0ede6;background:#fafaf8;line-height:1.6}
+.tci-model-row{display:flex;gap:6px;margin-bottom:14px}
+.tci-model-btn{background:#fff;border:1px solid #d0cec8;border-radius:8px;padding:6px 14px;font-size:12px;color:#555}
+.tci-model-btn.active{background:#dbeafe;border-color:#93c5fd;color:#1d4ed8;font-weight:600}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+.prep-edit{border:1px solid #e0ddd6;border-radius:10px;padding:12px;margin-bottom:8px;background:#fafaf8}
+.prep-edit-grid{display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:8px;align-items:end}
+.prep-conc-out{font-family:monospace;font-size:11px;color:#888;margin-top:6px}
+.del-btn{background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:9px 10px;color:#b91c1c;font-size:14px}
+.save-row{display:flex;gap:8px;justify-content:flex-end;margin-top:8px}
+.danger-btn{background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:8px 14px;font-size:13px;color:#b91c1c}
+.save-btn{background:#1d4ed8;border:1px solid #1d4ed8;border-radius:8px;padding:8px 20px;font-size:13px;color:#fff;font-weight:600}
+@media(max-width:420px){
+  .grid2{grid-template-columns:1fr}
+  .grid3{grid-template-columns:1fr 1fr}
+  .prep-edit-grid{grid-template-columns:1fr 1fr auto}
+  .mode-row .btn{font-size:12px;padding:7px 10px}
+}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script>
+// ── PWA Setup ──────────────────────────────────────────────────────────────
+(function(){
+  // Gera ícone via canvas
+  function makeIcon(size){
+    const c=document.createElement('canvas');
+    c.width=c.height=size;
+    const x=c.getContext('2d');
+    const r=size*0.18;
+    x.beginPath();x.moveTo(r,0);x.lineTo(size-r,0);x.quadraticCurveTo(size,0,size,r);
+    x.lineTo(size,size-r);x.quadraticCurveTo(size,size,size-r,size);
+    x.lineTo(r,size);x.quadraticCurveTo(0,size,0,size-r);
+    x.lineTo(0,r);x.quadraticCurveTo(0,0,r,0);x.closePath();
+    x.fillStyle='#1d4ed8';x.fill();
+    x.fillStyle='#fff';x.font=`bold ${size*0.52}px -apple-system,sans-serif`;
+    x.textAlign='center';x.textBaseline='middle';
+    x.fillText('⚕',size/2,size*0.54);
+    return c.toDataURL('image/png');
+  }
+  try{
+    const icon=makeIcon(180);
+    ['apple-touch-icon','icon'].forEach(rel=>{
+      const l=document.createElement('link');l.rel=rel;l.href=icon;document.head.appendChild(l);
+    });
+    // Manifest inline
+    const manifest={name:'PharmaCalc',short_name:'PharmaCalc',
+      description:'Calculadora de doses e bombas de infusão — Anestesia e UTI',
+      start_url:'.',display:'standalone',background_color:'#f5f5f0',theme_color:'#1d4ed8',
+      icons:[{src:makeIcon(192),sizes:'192x192',type:'image/png'},{src:makeIcon(512),sizes:'512x512',type:'image/png'}]};
+    const mlink=document.createElement('link');mlink.rel='manifest';
+    mlink.href='data:application/manifest+json,'+encodeURIComponent(JSON.stringify(manifest));
+    document.head.appendChild(mlink);
+  }catch(e){}
+  // Service worker (cache offline)
+  if('serviceWorker' in navigator){
+    const sw=`const C='pc1';
+self.addEventListener('install',e=>e.waitUntil(caches.open(C).then(c=>c.add(self.location.href))));
+self.addEventListener('fetch',e=>e.respondWith(caches.match(e.request).then(r=>r||fetch(e.request))));`;
+    try{
+      const b=new Blob([sw],{type:'application/javascript'});
+      navigator.serviceWorker.register(URL.createObjectURL(b)).catch(()=>{});
+    }catch(e){}
+  }
+})();
+
+// ── Utilitários ────────────────────────────────────────────────────────────
+function parseNum(s){
+if(s===undefined||s===null||s===’’)return NaN;
+return parseFloat(String(s).replace(’,’,’.’).replace(/[^0-9.-]/g,’’));
+}
+function enableComma(inp){
+inp.addEventListener(‘keydown’,function(e){
+if(e.key===’,’){
+e.preventDefault();
+const p=this.selectionStart,v=this.value;
+if(v.indexOf(’.’)===-1){this.value=v.slice(0,p)+’.’+v.slice(this.selectionEnd);this.selectionStart=this.selectionEnd=p+1;}
+}
+});
+}
+function lbm(W,H,sex){
+return sex===‘M’?1.1*W-128*(W/H)**2:1.07*W-148*(W/H)**2;
+}
+
+// ── Modelos TCI ────────────────────────────────────────────────────────────
+// Simulação genérica de 3 compartimentos (Euler, dt=0.05 min)
+function sim3comp(k10,k12,k13,k21,k31,V1,phases,snapTimes){
+const dt=0.05;
+let A1=0,A2=0,A3=0;
+const snaps={};
+const maxT=Math.max(…snapTimes)+1;
+for(let t=0;t<=maxT;t+=dt){
+const r=phases.find(p=>t>=p.s&&t<p.e)?.r||0;
+const dA1=r-(k10+k12+k13)*A1+k21*A2+k31*A3;
+const dA2=k12*A1-k21*A2;
+const dA3=k13*A1-k31*A3;
+A1+=dA1*dt;A2+=dA2*dt;A3+=dA3*dt;
+const ti=Math.round(t*10);
+snapTimes.forEach(tt=>{if(ti===Math.round(tt*10))snaps[tt]=A1/V1;});
+}
+return snaps;
+}
+function bsearch(fn,lo,hi,target,n=28){
+for(let i=0;i<n;i++){const m=(lo+hi)/2;fn(m)<target?lo=m:hi=m;}
+return(lo+hi)/2;
+}
+function buildPhases(k10,k12,k13,k21,k31,V1,Cl,targetCp,toMlh){
+const rSS=targetCp*Cl;
+const r1=bsearch(r=>sim3comp(k10,k12,k13,k21,k31,V1,[{s:0,e:10,r},{s:10,e:9999,r:rSS}],[10])[10]||0,0,rSS*20,targetCp);
+const r2=bsearch(r=>sim3comp(k10,k12,k13,k21,k31,V1,[{s:0,e:10,r:r1},{s:10,e:20,r},{s:20,e:9999,r:rSS}],[20])[20]||0,0,rSS*8,targetCp);
+const snaps=sim3comp(k10,k12,k13,k21,k31,V1,[{s:0,e:10,r:r1},{s:10,e:20,r:r2},{s:20,e:9999,r:rSS}],[10,20,40]);
+return[
+{label:‘Fase 1’,sub:‘0 – 10 min’, mlh:toMlh(r1), cp:snaps[10]||0},
+{label:‘Fase 2’,sub:‘10 – 20 min’,mlh:toMlh(r2), cp:snaps[20]||0},
+{label:‘Manutenção’,sub:’> 20 min’, mlh:toMlh(rSS),cp:snaps[40]||0},
+];
+}
+
+// Marsh — Propofol (Roberts 1988 / Diprifusor)
+// V peso-dependente, k-values fixos
+// cMcg: concentração da preparação em mcg/mL (ex: pure(10) → 10000 mcg/mL)
+function marshCalc(W,targetCp,cMcg){
+const k10=0.119,k12=0.112,k13=0.0419,k21=0.055,k31=0.0033;
+const V1=0.228*W;
+const Cl=k10*V1;
+const concMgMl=cMcg/1000; // converte mcg/mL → mg/mL (rate do modelo é em mg/min)
+return{phases:buildPhases(k10,k12,k13,k21,k31,V1,Cl,targetCp,r=>(r*60)/concMgMl),
+info:`V1=${V1.toFixed(1)}L · Cl=${Cl.toFixed(3)}L/min · Prep: ${concMgMl.toFixed(1)}mg/mL`};
+}
+
+// Schnider — Propofol (Schnider 1998/1999)
+function schniderCalc(W,H,age,sex,targetCp,cMcg){
+const lbmV=lbm(W,H,sex);
+const V1=4.27;
+const V2=18.9-0.391*(age-53);
+const k10=0.443+0.0107*(W-77)-0.0159*(lbmV-59)+0.0062*(H-177);
+const k12=(0.302-0.0056*(age-53));
+const k13=0.196;
+const k21=(1.29-0.024*(age-53))/V2;
+const k31=0.0035;
+const Cl=k10*V1;
+const concMgMl=cMcg/1000;
+return{phases:buildPhases(k10,k12,k13,k21,k31,V1,Cl,targetCp,r=>(r*60)/concMgMl),
+info:`LBM=${lbmV.toFixed(1)}kg · V1=${V1.toFixed(2)}L · Cl=${Cl.toFixed(3)}L/min · Prep: ${concMgMl.toFixed(1)}mg/mL`};
+}
+
+// Minto — Remifentanil (Minto 1997)
+// Unidades: V em L, Cl em L/min, Cp em ng/mL = mcg/L, Rate em mcg/min
+// cMcg: concentração da preparação em mcg/mL
+function mintoCalc(W,H,age,sex,targetCp,cMcg){
+const lbmV=lbm(W,H,sex);
+const V1=5.1-0.0201*(age-40)+0.072*(lbmV-55);
+const V2=9.82-0.0811*(age-40)+0.108*(lbmV-55);
+const V3=5.42;
+const Cl1=2.6-0.0162*(age-40)+0.0191*(lbmV-55);
+const Cl2=2.05-0.0301*(age-40);
+const Cl3=0.076-0.00113*(age-40);
+const k10=Cl1/V1,k12=Cl2/V1,k21=Cl2/V2,k13=Cl3/V1,k31=Cl3/V3;
+return{phases:buildPhases(k10,k12,k13,k21,k31,V1,Cl1,targetCp,r=>(r*60)/cMcg),
+info:`LBM=${lbmV.toFixed(1)}kg · V1=${V1.toFixed(2)}L · Cl=${Cl1.toFixed(3)}L/min · Prep: ${cMcg.toFixed(1)}mcg/mL`};
+}
+
+// Bovill — Sufentanil (Bovill 1984)
+// V peso-dependente, k-values fixos da população
+// Cp em ng/mL = mcg/L, Rate em mcg/min
+// cMcg: concentração da preparação em mcg/mL
+function bovillCalc(W,targetCp,cMcg){
+const k10=0.0645,k12=0.1199,k13=0.0073,k21=0.0269,k31=0.00095;
+const V1=0.204*W;
+const Cl=k10*V1;
+return{phases:buildPhases(k10,k12,k13,k21,k31,V1,Cl,targetCp,r=>(r*60)/cMcg),
+info:`V1=${V1.toFixed(1)}L · Cl=${Cl.toFixed(4)}L/min · Prep: ${cMcg.toFixed(1)}mcg/mL`};
+}
+
+// ── Dados ──────────────────────────────────────────────────────────────────
+const CAT_COLORS={bnm:’#7F77DD’,sedo:’#378ADD’,analg:’#D4537E’,vaso:’#E24B4A’,inot:’#EF9F27’,vasod:’#639922’,outros:’#888780’};
+const CATS=[{id:‘all’,n:‘Todos’},{id:‘bnm’,n:‘BNM’},{id:‘sedo’,n:‘Sedação’},{id:‘analg’,n:‘Analgesia’},{id:‘vaso’,n:‘Vasopressores’},{id:‘inot’,n:‘Inotrópicos’},{id:‘vasod’,n:‘Vasodilatadores’},{id:‘outros’,n:‘Outros’}];
+const CAT_NAMES=Object.fromEntries(CATS.map(c=>[c.id,c.n]));
+
+function mg(s,v){return{label:`${s}mg em ${v}mL`,solute:s,sUnit:‘mg’,vol:v,cMcg:(s*1000)/v}}
+function mcg(s,v){return{label:`${s}mcg em ${v}mL`,solute:s,sUnit:‘mcg’,vol:v,cMcg:s/v}}
+function unid(s,v){return{label:`${s}U em ${v}mL`,solute:s,sUnit:‘U’,vol:v,cU:s/v}}
+function pure(c){return{label:`${c}mg/mL (puro)`,solute:c,sUnit:‘mg/mL’,vol:1,cMcg:c*1000}}
+
+const N={
+atrac:`<ul><li><b>Mecanismo:</b> bloqueio NM não despolarizante; degradação de Hofmann + hidrólise éster — independe de fígado e rim</li><li><b>Indicação:</b> BNM contínuo em UTI, especialmente em disfunção orgânica múltipla</li><li><b>Monitorização:</b> TOF obrigatório; alvo T1/T0 ≤25% ou T4/T1 ausente</li><li><b>Atenção:</b> histamino-liberador em bolus rápido — broncoespasmo e hipotensão; infundir lentamente</li><li><b>PK:</b> T½ ~20 min; laudanosina acumula em infusões prolongadas (relevância clínica controversa)</li></ul>`,
+cisa:`<ul><li><b>Mecanismo:</b> bloqueio NM não despolarizante; degradação de Hofmann exclusiva (isômero 1R-cis,1'R-cis)</li><li><b>Indicação:</b> 1ª escolha UTI em hepato/nefropata; SARA (protocolo ACURASYS)</li><li><b>Vantagem:</b> não histamino-liberador; laudanosina ~10× menor que atracúrio</li><li><b>Monitorização:</b> TOF; suspender quando T4/T1 >90% no desmame ventilatório</li><li><b>PK:</b> T½ ~22 min; potência ~3× maior que atracúrio</li></ul>`,
+pancu:`<ul><li><b>Mecanismo:</b> bloqueio NM não despolarizante de longa duração; aminoesteroide</li><li><b>Efeitos CV:</b> taquicardia e ↑PA por bloqueio muscarínico e liberação de catecolaminas</li><li><b>Evitar em:</b> ICC, coronariopatia, cardiomiopatia hipertrófica, insuf. renal grave (excreção 60–80% renal)</li><li><b>PK:</b> T½ ~110 min; acúmulo significativo em disfunção renal e hepática</li></ul>`,
+rocu:`<ul><li><b>Mecanismo:</b> bloqueio NM não despolarizante intermediário; aminoesteroide</li><li><b>Indicação:</b> infusão UTI, ISR (0,6–1,2 mg/kg IV)</li><li><b>Reversão:</b> sugamadex 16 mg/kg reverte bloqueio profundo imediatamente</li><li><b>Metabolismo:</b> hepático; excreção biliar e renal; acúmulo em hepatopatia grave</li><li><b>Monitorização:</b> TOF; T½ ~60–90 min em dose única</li></ul>`,
+prop:`<ul><li><b>Mecanismo:</b> agonista GABA-A; anestésico geral e sedativo de ação ultracurta</li><li><b>Doses:</b> sedação leve 25–50 · profunda 50–75 · anestesia 100–200 mcg/kg/min</li><li><b>PRIS:</b> síndrome do propofol com >4 mg/kg/h por >48h — acidose, rabdomiólise, IC, arritmias</li><li><b>Monitorar:</b> triglicerídeos (1,1 kcal/mL pelo veículo lipídico), PA, CPK</li><li><b>TCI:</b> modelos Marsh e Schnider disponíveis nesta tela</li><li><b>PK:</b> redistribuição rápida (T½α ~2 min); T½ ctx-sensitivo aumenta com infusão prolongada</li></ul>`,
+midaz:`<ul><li><b>Mecanismo:</b> benzodiazepínico — agonista GABA-A; ansiolítico, amnésico, anticonvulsivante</li><li><b>Acúmulo:</b> metabolismo hepático (CYP3A4) → 1-OH-midazolam ativo; acúmulo em obesos, idosos e hepatopatas</li><li><b>Abstinência:</b> desmame gradual após uso >5–7 dias — reduzir 10–20%/dia</li><li><b>Interações:</b> fluconazol e inibidores CYP3A4 aumentam nível sérico 2–5×</li><li><b>Antagonista:</b> flumazenil 0,2 mg IV (máx 1 mg) — T½ curto, possível ressedação</li></ul>`,
+dex:`<ul><li><b>Mecanismo:</b> agonista α2-adrenérgico central (locus ceruleus) — sedação sem depressão respiratória</li><li><b>Vantagens:</b> sedação cooperativa; reduz delirium; facilita desmame ventilatório</li><li><b>Loading:</b> 1 mcg/kg em 10 min (opcional — pode causar hipotensão/bradicardia transitória)</li><li><b>Efeitos adversos:</b> bradicardia, hipotensão, hipertensão paradoxal em doses altas</li><li><b>Evitar em:</b> BAV 2º/3º grau sem MP, bradicardia sintomática, hipotensão refratária</li><li><b>PK:</b> T½ ~2h; metabolismo hepático; sem acúmulo de metabólitos ativos</li></ul>`,
+clon:`<ul><li><b>Mecanismo:</b> agonista α2 (α2:α1=200:1) — sedativo, analgésico, antissimpaticolítico</li><li><b>Indicações:</b> adjuvante em sedoanalgesia, desmame de opioides, HAS perioperatória</li><li><b>Efeitos adversos:</b> hipotensão, bradicardia, sedação excessiva, boca seca</li><li><b>Abstinência:</b> crise hipertensiva de rebote se suspensão abrupta após >2 semanas</li><li><b>PK:</b> T½ ~12h; excreção renal; ajuste em IRC</li></ul>`,
+ket:`<ul><li><b>Mecanismo:</b> antagonista NMDA; anestésico dissociativo com ação analgésica, broncodilatadora e simpaticomimética</li><li><b>Indicações:</b> adjuvante analgésico (sparing opioide), broncoespasmo refratário, procedimentos em choque, grandes queimados</li><li><b>Vantagens:</b> broncodilatação, mantém reflexos de VA, estabilidade hemodinâmica</li><li><b>Efeitos adversos:</b> alucinações, hipersecreção salivar — associar midazolam e atropina</li><li><b>Evitar em:</b> HIC, HAS grave não controlada, psicose ativa (relativo)</li><li><b>PK:</b> T½ ~2–3h; metabolismo hepático → norketamina (ativa, 1/3 da potência)</li></ul>`,
+fent:`<ul><li><b>Mecanismo:</b> agonista opioide µ puro; alta lipossolubilidade → rápido início e redistribuição</li><li><b>Bolus:</b> 0,5–1 mcg/kg IV lento; rigidez torácica em bolus rápido >5 mcg/kg</li><li><b>Atenção:</b> acúmulo em obesos, idosos e uso prolongado — T½ ctx-sensitivo aumenta progressivamente</li><li><b>Efeitos adversos:</b> depressão respiratória, bradicardia, hipotensão, íleo, tolerância</li><li><b>Antagonista:</b> naloxona 0,04–0,4 mg IV (titular — evitar síndrome de abstinência aguda)</li></ul>`,
+suf:`<ul><li><b>Mecanismo:</b> agonista µ altamente seletivo; 10× mais potente que fentanil</li><li><b>Bolus:</b> 0,1–0,3 mcg/kg IV lento</li><li><b>PK:</b> T½β ~10h; alto Vd; ligação proteica >90%; metabolismo hepático</li><li><b>Comparado ao fentanil:</b> menor T½ ctx-sensitivo em infusões >8h — acúmulo relativo menor</li><li><b>TCI:</b> modelo Bovill disponível nesta tela</li><li><b>Efeitos adversos:</b> depressão respiratória, bradicardia, rigidez torácica, prurido</li></ul>`,
+remi:`<ul><li><b>Mecanismo:</b> agonista µ com éster na estrutura — hidrolisado por esterases plasmáticas e teciduais</li><li><b>Vantagem principal:</b> T½ ctx-sensitivo ~3 min independente da duração da infusão</li><li><b>TCI:</b> modelo Minto disponível nesta tela</li><li><b>Atenção:</b> hiperalgesia pós-operatória com doses altas/prolongadas — associar analgesia multimodal</li><li><b>Diluição:</b> 5 mg em 250 mL SG5% = 20 mcg/mL; não diluir em Ringer lactato</li><li><b>Efeitos adversos:</b> bradicardia e hipotensão dose-dependentes, rigidez muscular, náusea</li></ul>`,
+morfi:`<ul><li><b>Mecanismo:</b> agonista µ, κ e δ; hidrofílico — onset mais lento, duração mais longa</li><li><b>Metabolismo:</b> hepático → M6G (ativo, potente) e M3G; acúmulo em IRC</li><li><b>Cautela em IRC:</b> M6G acumula com ClCr <30 mL/min → sedação prolongada e depressão respiratória</li><li><b>Efeitos adversos:</b> histamino-liberador, náusea, constipação, prurido (especialmente neuroaxial)</li><li><b>PK:</b> T½ ~2–4h; duração clínica 4–6h</li></ul>`,
+meta:`<ul><li><b>Mecanismo:</b> agonista µ + antagonista NMDA + inibidor de recaptação de serotonina/noradrenalina</li><li><b>PK:</b> T½β extremamente variável (8–59h) — risco de acúmulo tardio; titulação difícil</li><li><b>Atenção cardíaca:</b> prolonga QTc — ECG basal obrigatório; cautela com outros QT-prolongadores</li><li><b>Interações:</b> múltiplas via CYP3A4, 2D6 e 2C19; rifampicina e carbamazepina reduzem nível</li><li><b>Conversão:</b> equianalgesia variável — iniciar com 10–20% da dose calculada</li></ul>`,
+nora:`<ul><li><b>Mecanismo:</b> α1 >> β1; vasoconstricção arterial e venosa; leve ↑FC por barorreflexa</li><li><b>Indicação:</b> 1ª linha no choque séptico e distributivo (Surviving Sepsis Campaign)</li><li><b>Acesso:</b> preferencialmente central; periférico aceitável em emergência por tempo limitado</li><li><b>SVA:</b> dobrar concentração (16 mg/250 mL) para restringir volume</li><li><b>Efeitos adversos:</b> isquemia periférica e esplâncnica em doses altas; necrobiose em extravasamento</li><li><b>Titular:</b> alvo PAM ≥65 mmHg; reavaliar a cada 6–12h para desmame</li></ul>`,
+adre:`<ul><li><b>Mecanismo:</b> β1+β2 em doses baixas → α1 predomina em doses altas (>0,2 mcg/kg/min)</li><li><b>Indicações:</b> anafilaxia (0,3–0,5 mg IM), PCR (1 mg IV/IO), choque refratário, broncoespasmo grave</li><li><b>Adição à noradrenalina:</b> no choque séptico refratário como 2º vasopressor</li><li><b>Efeitos adversos:</b> taquicardia, arritmias, hiperglicemia, hiperlactatemia (β2), isquemia miocárdica</li><li><b>Monitorar:</b> lactato sérico (elevação por β2 não indica necessariamente hipoperfusão)</li></ul>`,
+vasop:`<ul><li><b>Mecanismo:</b> agonista V1 (vasoconstricção) e V2 (retenção hídrica); não adrenérgico</li><li><b>Indicações:</b> adjuvante no choque séptico; DI central; choque vasoplégico pós-CEC</li><li><b>Dose fixa:</b> 0,03 U/min em adição à noradrenalina — sem titulação por peso</li><li><b>Isquemia:</b> esplâncnica, coronariana e digital acima de 0,04 U/min</li><li><b>Vantagem:</b> sem taquifilaxia; mecanismo independente do receptor adrenérgico (útil na acidose grave)</li></ul>`,
+feni:`<ul><li><b>Mecanismo:</b> agonista α1 puro — vasoconstricção sem efeito inotrópico direto</li><li><b>Indicações:</b> hipotensão por raquianestesia/peridural, hipotensão perioperatória sem taquicardia</li><li><b>Bradicardia reflexa:</b> ↑PA → barorreflexa → ↓FC; problemático em bradicardia prévia</li><li><b>Evitar em:</b> IC sistólica, coronariopata grave, choque distributivo como vasopressor único</li><li><b>Vantagem obstétrica:</b> preserva perfusão uteroplacentária melhor que efedrina</li></ul>`,
+dopa:`<ul><li><b>Mecanismo:</b> dose-dependente — ≤5 dopaminérgico · 5–10 β1 · >10 α1</li><li><b>Indicação atual:</b> 2ª linha; substituída por noradrenalina na maioria dos choques</li><li><b>"Dose renal":</b> conceito refutado — sem evidência de proteção renal</li><li><b>Efeitos adversos:</b> arritmias (mais que noradrenalina), taquicardia, inibição de prolactina e TSH</li><li><b>PK:</b> T½ ~2 min; degradação rápida por MAO e COMT</li></ul>`,
+dobu:`<ul><li><b>Mecanismo:</b> agonista β1+β2 — inotrópico positivo, vasodilatador sistêmico leve</li><li><b>Indicações:</b> IC aguda com IC baixo e PVC/PCP elevadas; choque cardiogênico</li><li><b>Efeitos hemodinâmicos:</b> ↑DC, ↓SVR, ↓PCWP; pode ↓PAM se hipovolemia</li><li><b>Efeitos adversos:</b> taquicardia, arritmias (FA, TV), isquemia miocárdica em coronariopata</li><li><b>Evitar em:</b> CMHO, taquiarritmias não controladas, hipovolemia não corrigida</li><li><b>PK:</b> T½ ~2 min; taquifilaxia em uso >72h</li></ul>`,
+mili:`<ul><li><b>Mecanismo:</b> inibidor de PDE3 — ↑AMPc → inotrópico + lusitrópico + vasodilatador (inodilatador)</li><li><b>Vantagem:</b> eficaz mesmo com dessensibilização adrenérgica (IC crônica em beta-bloqueador)</li><li><b>Loading:</b> 50 mcg/kg em 10 min (omitir se hipotensão)</li><li><b>Efeitos adversos:</b> hipotensão, arritmias, trombocitopenia</li><li><b>Excreção:</b> renal (~80%) — ajuste com ClCr <50 mL/min</li></ul>`,
+levo:`<ul><li><b>Mecanismo:</b> sensibilizador de cálcio (troponina C) + abertura de canais K-ATP vasculares</li><li><b>Vantagem:</b> não aumenta consumo de O₂ miocárdico; efeito hemodinâmico persiste 7–9 dias (metabólito OR-1896)</li><li><b>Loading:</b> 12 mcg/kg em 10 min (omitir se PAS <90 mmHg)</li><li><b>Efeitos adversos:</b> hipotensão, taquicardia, cefaleia, hipocalemia</li><li><b>Indicação:</b> IC aguda descompensada com IC baixo refratório a inotrópicos convencionais</li></ul>`,
+ntp:`<ul><li><b>Mecanismo:</b> doador de NO → vasodilatação arterial e venosa balanceada</li><li><b>Indicações:</b> emergência hipertensiva, IC grave com ↑pós-carga, dissecção de aorta</li><li><b>Toxicidade cianeto:</b> real >3 mcg/kg/min por >48–72h — acidose, lactato ↑, taquifilaxia</li><li><b>Proteção:</b> embalar em papel alumínio — fotossensível</li><li><b>Limite máximo:</b> 10 mcg/kg/min (absoluto); manter <3 mcg/kg/min quando possível</li></ul>`,
+ntg:`<ul><li><b>Mecanismo:</b> doador de NO → venodilatação predominante; arterial em doses altas</li><li><b>Indicações:</b> SCA, IC aguda com congestão, emergência hipertensiva, espasmo coronariano</li><li><b>Tolerância:</b> taquifilaxia após 24–48h contínuos — janela nitrática se possível</li><li><b>Material:</b> equipo não-PVC obrigatório (absorção reduz concentração em até 80%)</li><li><b>Evitar:</b> inibidores PDE5 (sildenafil, tadalafil) nas últimas 24–48h — hipotensão grave</li></ul>`,
+insu:`<ul><li><b>Preparação padrão:</b> 100U em 100mL SF = 1 U/mL</li><li><b>Alvo glicêmico UTI:</b> 140–180 mg/dL (NICE-SUGAR); controle intensivo aumenta mortalidade</li><li><b>Monitoração:</b> glicemia capilar horária no início; a cada 2–4h após estabilização</li><li><b>Hipocalemia:</b> insulina desloca K⁺ → repor K⁺ <3,5 mEq/L antes de iniciar</li><li><b>Indicações adicionais:</b> hipercalemia aguda, cetoacidose diabética</li></ul>`,
+salb:`<ul><li><b>Mecanismo:</b> agonista β2 seletivo — broncodilatação, vasodilatação pulmonar, ↓K⁺ sérico</li><li><b>Indicações IV:</b> broncoespasmo grave refratário a inalatório, hipercalemia aguda (K⁺ >6,5 mEq/L)</li><li><b>Hipercalemia:</b> efeito em 30 min, duração ~2h; não substitui diálise</li><li><b>Efeitos adversos:</b> taquicardia, tremor, hipocalemia, hiperglicemia, hipotensão</li><li><b>Monitorar:</b> K⁺ sérico (cai 0,5–1 mEq/L), FC, SpO₂</li></ul>`,
+amio:`<ul><li><b>Mecanismo:</b> classe III (bloqueio K⁺) + I, II e IV — antiarrítmico de amplo espectro</li><li><b>Indicações:</b> FA com resposta ventricular rápida, TV/FV recorrente, manutenção de RS</li><li><b>Loading:</b> 150 mg IV em 10 min (TV/FV) ou 5–7 mg/kg em 1h (eletivo)</li><li><b>Flebite:</b> acesso central preferencial; periférico apenas em emergência</li><li><b>Efeitos agudos:</b> hipotensão, bradicardia, BAV</li><li><b>Efeitos crônicos:</b> toxicidade pulmonar, tireoidiana, hepática, corneal, fotossensibilidade</li></ul>`,
+};
+
+let drugs=[
+{id:‘atrac’,cat:‘bnm’,name:‘Atracúrio’,abbr:‘ATR’,unit:‘mg/kg/h’,min:0.3,max:0.6,tip:0.4,preps:[mg(500,500)],notes:N.atrac},
+{id:‘cisa’,cat:‘bnm’,name:‘Cisatracúrio’,abbr:‘CSA’,unit:‘mg/kg/h’,min:0.03,max:0.06,tip:0.04,preps:[mg(40,400)],notes:N.cisa},
+{id:‘pancu’,cat:‘bnm’,name:‘Pancurônio’,abbr:‘PAN’,unit:‘mg/kg/h’,min:0.05,max:0.1,tip:0.06,preps:[mg(10,100)],notes:N.pancu},
+{id:‘rocu’,cat:‘bnm’,name:‘Rocurônio’,abbr:‘ROC’,unit:‘mg/kg/h’,min:0.3,max:0.6,tip:0.4,preps:[mg(500,50)],notes:N.rocu},
+{id:‘prop’,cat:‘sedo’,name:‘Propofol’,abbr:‘PRO’,unit:‘mcg/kg/min’,min:25,max:200,tip:50,preps:[pure(10)],notes:N.prop,
+tci:true,tciModels:[‘marsh’,‘schnider’],tciUnit:‘mcg/mL’,tciRange:‘2–6’,tciTip:‘3.0’},
+{id:‘midaz’,cat:‘sedo’,name:‘Midazolam’,abbr:‘MDZ’,unit:‘mg/kg/h’,min:0.02,max:0.1,tip:0.05,preps:[mg(150,150)],notes:N.midaz},
+{id:‘dex’,cat:‘sedo’,name:‘Dexmedetomidina’,abbr:‘DEX’,unit:‘mcg/kg/h’,min:0.2,max:1.5,tip:0.7,preps:[mcg(200,50)],notes:N.dex},
+{id:‘clon’,cat:‘sedo’,name:‘Clonidina’,abbr:‘CLO’,unit:‘mcg/kg/h’,min:0.5,max:2.0,tip:1.0,preps:[mcg(300,500)],notes:N.clon},
+{id:‘ket’,cat:‘sedo’,name:‘Cetamina’,abbr:‘KET’,unit:‘mg/kg/h’,min:0.1,max:0.5,tip:0.2,preps:[mg(500,500)],notes:N.ket},
+{id:‘fent’,cat:‘analg’,name:‘Fentanil’,abbr:‘FNT’,unit:‘mcg/kg/h’,min:0.5,max:2.0,tip:1.0,preps:[mcg(2500,250)],notes:N.fent},
+{id:‘suf’,cat:‘analg’,name:‘Sufentanil’,abbr:‘SUF’,unit:‘mcg/kg/h’,min:0.1,max:0.5,tip:0.2,preps:[mcg(250,250)],notes:N.suf,
+tci:true,tciModels:[‘bovill’],tciUnit:‘ng/mL’,tciRange:‘0.1–2’,tciTip:‘0.5’},
+{id:‘remi’,cat:‘analg’,name:‘Remifentanil’,abbr:‘RMF’,unit:‘mcg/kg/min’,min:0.05,max:0.5,tip:0.1,preps:[mg(5,250)],notes:N.remi,
+tci:true,tciModels:[‘minto’],tciUnit:‘ng/mL’,tciRange:‘1–8’,tciTip:‘3.0’},
+{id:‘morfi’,cat:‘analg’,name:‘Morfina’,abbr:‘MRF’,unit:‘mg/kg/h’,min:0.01,max:0.05,tip:0.02,preps:[mg(50,250)],notes:N.morfi},
+{id:‘meta’,cat:‘analg’,name:‘Metadona’,abbr:‘MTD’,unit:‘mg/kg/h’,min:0.01,max:0.05,tip:0.02,preps:[mg(50,250)],notes:N.meta},
+{id:‘nora’,cat:‘vaso’,name:‘Noradrenalina’,abbr:‘NA’,unit:‘mcg/kg/min’,min:0.01,max:3.0,tip:0.1,preps:[mg(8,250)],notes:N.nora},
+{id:‘adre’,cat:‘vaso’,name:‘Adrenalina’,abbr:‘EPI’,unit:‘mcg/kg/min’,min:0.01,max:1.0,tip:0.05,preps:[mg(4,250)],notes:N.adre},
+{id:‘vasop’,cat:‘vaso’,name:‘Vasopressina’,abbr:‘VP’,unit:‘U/min’,min:0.01,max:0.04,tip:0.03,preps:[unid(20,100)],notes:N.vasop},
+{id:‘feni’,cat:‘vaso’,name:‘Fenilefrina’,abbr:‘PE’,unit:‘mcg/kg/min’,min:0.5,max:5.0,tip:1.5,preps:[mg(100,250)],notes:N.feni},
+{id:‘dopa’,cat:‘vaso’,name:‘Dopamina’,abbr:‘DA’,unit:‘mcg/kg/min’,min:2,max:20,tip:5,preps:[mg(400,250)],notes:N.dopa},
+{id:‘dobu’,cat:‘inot’,name:‘Dobutamina’,abbr:‘DB’,unit:‘mcg/kg/min’,min:2.5,max:20,tip:5,preps:[mg(250,250)],notes:N.dobu},
+{id:‘mili’,cat:‘inot’,name:‘Milrinona’,abbr:‘ML’,unit:‘mcg/kg/min’,min:0.375,max:0.75,tip:0.5,preps:[mg(20,100)],notes:N.mili},
+{id:‘levo’,cat:‘inot’,name:‘Levosimendan’,abbr:‘LS’,unit:‘mcg/kg/min’,min:0.05,max:0.2,tip:0.1,preps:[mg(12.5,500)],notes:N.levo},
+{id:‘ntp’,cat:‘vasod’,name:‘Nitroprussiato’,abbr:‘NTP’,unit:‘mcg/kg/min’,min:0.5,max:8,tip:1,preps:[mg(50,250)],notes:N.ntp},
+{id:‘ntg’,cat:‘vasod’,name:‘Nitroglicerina’,abbr:‘NTG’,unit:‘mcg/min’,min:5,max:400,tip:50,preps:[mg(25,250)],notes:N.ntg},
+{id:‘insu’,cat:‘outros’,name:‘Insulina Regular’,abbr:‘INS’,unit:‘U/h’,min:0.5,max:20,tip:2,preps:[unid(100,100)],notes:N.insu},
+{id:‘salb’,cat:‘outros’,name:‘Salbutamol’,abbr:‘SLB’,unit:‘mcg/min’,min:5,max:20,tip:10,preps:[mg(5,250)],notes:N.salb},
+{id:‘amio’,cat:‘outros’,name:‘Amiodarona’,abbr:‘AMI’,unit:‘mg/h’,min:30,max:90,tip:60,preps:[mg(900,500)],notes:N.amio},
+];
+
+let state={view:‘catalog’,selId:null,selPrep:0,catFilter:‘all’,search:’’,editForm:null};
+let cv={W:’’,dose:’’,mlh:’’,mode:‘dose’,tciCp:’’,tciModel:’’,tciAge:’’,tciHeight:’’,tciSex:‘M’};
+
+function getDrug(id){return drugs.find(d=>d.id===id)}
+function getConcLabel(p){
+if(p.cU!=null){const u=p.cU;return u<1?`${u.toFixed(4)} U/mL`:`${u.toFixed(3)} U/mL`;}
+const c=p.cMcg;
+if(c>=1000)return`${(c/1000).toFixed(2)} mg/mL`;
+if(c<1)return`${c.toFixed(4)} mcg/mL`;
+return`${c.toFixed(2)} mcg/mL`;
+}
+function calcMlh(drug,prep,W,dose){
+const w=parseNum(W),d=parseNum(dose);
+if(isNaN(d)||d<=0)return null;
+const isWt=drug.unit.includes(‘kg’);
+if(isWt&&(isNaN(w)||w<=0))return null;
+const u=drug.unit,c=prep.cMcg;
+if(prep.cU!=null){
+if(u===‘U/min’)return(d*60)/prep.cU;
+if(u===‘U/h’)return d/prep.cU;
+if(u===‘U/kg/h’)return(d*w)/prep.cU;
+return null;
+}
+if(u===‘mcg/kg/min’)return(d*w*60)/c;
+if(u===‘mcg/kg/h’)return(d*w)/c;
+if(u===‘mg/kg/h’)return(d*w*1000)/c;
+if(u===‘mcg/min’)return(d*60)/c;
+if(u===‘mg/h’)return(d*1000)/c;
+return null;
+}
+function calcDose(drug,prep,W,mlh){
+const w=parseNum(W),m=parseNum(mlh);
+if(isNaN(m)||m<=0)return null;
+const isWt=drug.unit.includes(‘kg’);
+if(isWt&&(isNaN(w)||w<=0))return null;
+const u=drug.unit,c=prep.cMcg,mcgH=m*c;
+if(prep.cU!=null){
+if(u===‘U/min’)return(m*prep.cU)/60;
+if(u===‘U/h’)return m*prep.cU;
+if(u===‘U/kg/h’)return(m*prep.cU)/w;
+return null;
+}
+if(u===‘mcg/kg/min’)return mcgH/(w*60);
+if(u===‘mcg/kg/h’)return mcgH/w;
+if(u===‘mg/kg/h’)return mcgH/(w*1000);
+if(u===‘mcg/min’)return mcgH/60;
+if(u===‘mg/h’)return mcgH/1000;
+return null;
+}
+function fmtV(v){
+if(v===null||isNaN(v))return’—’;
+if(v<0.001)return v.toFixed(6);if(v<0.01)return v.toFixed(5);
+if(v<0.1)return v.toFixed(4);if(v<10)return v.toFixed(3);
+return v.toFixed(2);
+}
+function inRange(v,min,max){return v<min?‘low’:v>max?‘high’:‘ok’}
+
+function tciTable(phases,modelLabel,cp,unit,info){
+const rows=phases.map(p=>`<tr>
+<td><div class="tci-phase"><b>${p.label}</b>${p.sub}</div></td>
+<td><span class="tci-rate">${p.mlh.toFixed(1)}</span> <span style="font-size:11px;color:#888">mL/h</span></td>
+<td><span class="tci-cp">≈ ${p.cp.toFixed(2)} ${unit}</span></td>
+
+  </tr>`).join('');
+  return`<div class="tci-card"><table class="tci-table">
+    <thead><tr>
+      <th>Fase &nbsp;·&nbsp; <span style="color:#1d4ed8;font-weight:600">${modelLabel}</span></th>
+      <th>Velocidade</th><th>Cp estimada · Alvo: ${cp} ${unit}</th>
+    </tr></thead>
+    <tbody>${rows}</tbody>
+  </table>
+  <div class="tci-note">${info} &nbsp;·&nbsp; Valores aproximados — ajustar pela resposta clínica e monitorização anestésica</div>
+  </div>`;
+}
+
+function updateResult(){
+const box=document.getElementById(‘result’);if(!box)return;
+const drug=getDrug(state.selId);if(!drug){box.innerHTML=’’;return;}
+const prep=drug.preps[Math.min(state.selPrep,drug.preps.length-1)];
+
+if(cv.mode===‘tci’){
+const W=parseNum(cv.W),cp=parseNum(cv.tciCp),age=parseNum(cv.tciAge),ht=parseNum(cv.tciHeight);
+const m=cv.tciModel;
+const unit=drug.tciUnit||‘mcg/mL’;
+const needDemo=m===‘schnider’||m===‘minto’;
+const demoOk=!needDemo||(age>0&&ht>0);
+if(isNaN(W)||W<=0||isNaN(cp)||cp<=0||!demoOk){
+const hint=needDemo?‘Preencha peso, idade, altura e Cp-alvo’:‘Informe peso e Cp-alvo’;
+box.innerHTML=`<div class="result-box empty"><div class="result-lbl">TCI — ${m.charAt(0).toUpperCase()+m.slice(1)}</div><div class="result-val empty">${hint}</div></div>`;
+return;
+}
+const cMcg=prep.cMcg; // concentração da preparação selecionada em mcg/mL
+let res;
+if(m===‘marsh’)    res=marshCalc(W,cp,cMcg);
+else if(m===‘schnider’) res=schniderCalc(W,ht,age,cv.tciSex,cp,cMcg);
+else if(m===‘minto’)    res=mintoCalc(W,ht,age,cv.tciSex,cp,cMcg);
+else if(m===‘bovill’)   res=bovillCalc(W,cp,cMcg);
+else{box.innerHTML=’’;return;}
+const label={marsh:‘Marsh’,schnider:‘Schnider’,minto:‘Minto’,bovill:‘Bovill’}[m]||m;
+box.innerHTML=tciTable(res.phases,label,cp,unit,res.info);
+return;
+}
+if(cv.mode===‘dose’){
+const v=calcMlh(drug,prep,cv.W,cv.dose);
+if(v===null||isNaN(v)||v<=0){box.innerHTML=`<div class="result-box empty"><div class="result-lbl">Velocidade de infusão</div><div class="result-val empty">Preencha os campos acima</div></div>`;return;}
+const d=parseNum(cv.dose),s=isNaN(d)?‘n’:inRange(d,drug.min,drug.max);
+const cls=s===‘high’?‘warn’:s===‘low’?‘info’:’’;
+const badge=s===‘n’?’’:s===‘ok’?`<div class="range-badge ok">✓ Dentro do intervalo terapêutico</div>`:s===‘high’?`<div class="range-badge">⚠ Acima do máximo (${drug.max} ${drug.unit})</div>`:`<div class="range-badge low">ℹ Abaixo do mínimo (${drug.min} ${drug.unit})</div>`;
+box.innerHTML=`<div class="result-box ${cls}"><div class="result-lbl">Velocidade de infusão</div><div class="result-val ${cls}">${v.toFixed(2)}<span class="result-unit">mL/h</span></div></div>${badge}`;
+} else {
+const v=calcDose(drug,prep,cv.W,cv.mlh);
+if(v===null||isNaN(v)||v<=0){box.innerHTML=`<div class="result-box empty"><div class="result-lbl">Dose calculada</div><div class="result-val empty">Preencha os campos acima</div></div>`;return;}
+const s=inRange(v,drug.min,drug.max),cls=s===‘high’?‘warn’:s===‘low’?‘info’:’’;
+const badge=s===‘ok’?`<div class="range-badge ok">✓ Dentro do intervalo terapêutico</div>`:s===‘high’?`<div class="range-badge">⚠ Acima do máximo (${drug.max} ${drug.unit})</div>`:`<div class="range-badge low">ℹ Abaixo do mínimo (${drug.min} ${drug.unit})</div>`;
+box.innerHTML=`<div class="result-box ${cls}"><div class="result-lbl">Dose calculada</div><div class="result-val ${cls}">${fmtV(v)}<span class="result-unit">${drug.unit}</span></div></div>${badge}`;
+}
+}
+
+function el(id){return document.getElementById(id)}
+function on(id,ev,fn){const e=el(id);if(e)e.addEventListener(ev,fn)}
+function val(id){const e=el(id);return e?e.value:’’}
+function setState(patch){Object.assign(state,patch);render()}
+
+function render(){
+const app=el(‘app’);if(!app)return;
+app.innerHTML=`<div class="header"><div class="logo">⚕</div><div><div class="app-title">PharmaCalc</div><div class="app-sub">Anestesia · UTI · Infusões</div></div></div><div id="vc"></div>`;
+const vc=el(‘vc’);
+if(state.view===‘catalog’)renderCatalog(vc);
+else if(state.view===‘calc’)renderCalc(vc);
+else renderEdit(vc);
+attachEvents();
+}
+
+function renderCatalog(c){
+const filtered=drugs.filter(d=>(state.catFilter===‘all’||d.cat===state.catFilter)&&(!state.search||d.name.toLowerCase().includes(state.search.toLowerCase())||d.abbr.toLowerCase().includes(state.search.toLowerCase())));
+c.innerHTML=` <div class="search-wrap"><span class="search-icon">⌕</span><input type="text" id="search-inp" placeholder="Buscar medicamento…" value="${state.search.replace(/"/g,'&quot;')}"></div> <div class="cats">${CATS.map(cat=>`<button class="cat-btn${state.catFilter===cat.id?' active':''}" data-cat="${cat.id}">${cat.n}</button>`).join('')}</div> <div class="drug-grid"> ${filtered.map(d=>`<button class="drug-card" data-drug="${d.id}" style="border-left-color:${CAT_COLORS[d.cat]||'#888'}">
+<div class="drug-abbr" style="color:${CAT_COLORS[d.cat]||'#888'}">${d.abbr}${d.tci?’<span class="tci-badge">TCI</span>’:’’}</div>
+<div class="drug-name">${d.name}</div>
+<div class="drug-unit">${d.unit}</div>
+</button>`).join('')} <button class="add-card" id="btn-add"><span style="font-size:22px">+</span>Adicionar</button> </div>`;
+}
+
+function renderCalc(c){
+const drug=getDrug(state.selId);if(!drug){setState({view:‘catalog’});return;}
+const col=CAT_COLORS[drug.cat]||’#888’;
+const si=Math.min(state.selPrep,drug.preps.length-1);
+const prepBtns=drug.preps.map((p,i)=>`<button class="prep-btn${si===i?' active':''}" data-prep="${i}"><div>${p.label}</div><div class="conc">→ ${getConcLabel(p)}</div></button>`).join(’’);
+const mode=cv.mode;
+const tciBtn=drug.tci?`<button class="btn${mode==='tci'?' btn-act':''}" id="btn-mode-tci">TCI</button>`:’’;
+
+let fields=’’;
+if(mode===‘tci’&&drug.tci){
+const models=drug.tciModels||[];
+const modelBtns=models.length>1?`<div class="field"><label class="lbl">Modelo PK</label><div class="tci-model-row">${models.map(m=>`<button class="tci-model-btn${cv.tciModel===m?' active':''}" id="btn-tci-${m}">${m.charAt(0).toUpperCase()+m.slice(1)}</button>`).join('')}</div></div>`:’’;
+const needDemo=cv.tciModel===‘schnider’||cv.tciModel===‘minto’;
+const demoFields=needDemo?`<div class="grid3" style="margin-top:10px"> <div class="field"><label class="lbl">Idade (anos)</label><div class="num-wrap"><input type="text" inputmode="decimal" id="inp-tci-age" value="${cv.tciAge}" placeholder="40" autocomplete="off"></div></div> <div class="field"><label class="lbl">Altura (cm)</label><div class="num-wrap"><input type="text" inputmode="decimal" id="inp-tci-ht" value="${cv.tciHeight}" placeholder="170" autocomplete="off"></div></div> <div class="field"><label class="lbl">Sexo</label><select id="inp-tci-sex"><option value="M"${cv.tciSex==='M'?' selected':''}>M</option><option value="F"${cv.tciSex==='F'?' selected':''}>F</option></select></div> </div>`:’’;
+fields=`${modelBtns}<div class="grid2"> <div class="field"><label class="lbl">Peso</label><div class="num-wrap"><input type="text" inputmode="decimal" id="inp-W" value="${cv.W}" placeholder="70" autocomplete="off"><span class="uhint">kg</span></div></div> <div class="field"><label class="lbl">Cp-alvo (${drug.tciUnit})</label><div class="num-wrap"><input type="text" inputmode="decimal" id="inp-tci-cp" value="${cv.tciCp}" placeholder="${drug.tciTip||'3.0'}" autocomplete="off"><span class="uhint">${drug.tciUnit}</span></div></div> </div>${demoFields}`;
+} else {
+const needW=drug.unit.includes(‘kg’);
+const wField=needW?`<div class="field"><label class="lbl">Peso do paciente</label><div class="num-wrap"><input type="text" inputmode="decimal" id="inp-W" value="${cv.W}" placeholder="70" autocomplete="off"><span class="uhint">kg</span></div></div>`:’’;
+const dField=mode===‘dose’
+?`<div class="field"><label class="lbl">Dose</label><div class="num-wrap"><input type="text" inputmode="decimal" id="inp-dose" value="${cv.dose}" placeholder="${drug.tip}" autocomplete="off"><span class="uhint">${drug.unit}</span></div></div>`
+:`<div class="field"><label class="lbl">Velocidade de infusão</label><div class="num-wrap"><input type="text" inputmode="decimal" id="inp-mlh" value="${cv.mlh}" placeholder="10" autocomplete="off"><span class="uhint">mL/h</span></div></div>`;
+fields=wField+dField;
+}
+
+c.innerHTML=` <div class="back-row"><button class="btn btn-sm" id="btn-back">← Voltar</button> <div><div class="drug-heading">${drug.name}</div><div class="drug-meta">${CAT_NAMES[drug.cat]||''} · ${drug.min}–${drug.max} ${drug.unit}</div></div> <button class="btn btn-sm" id="btn-edit" style="margin-left:auto">✎ Editar</button> </div> <div class="note-card" style="border-left-color:${col}">${drug.notes}</div> <div class="field"><label class="lbl">Preparação da solução</label><div class="prep-list">${prepBtns}</div></div> <div class="mode-row"> <button class="btn${mode==='dose'?' btn-act':''}" id="btn-mode-dose">Dose → mL/h</button> <button class="btn${mode==='mlh'?' btn-act':''}" id="btn-mode-mlh">mL/h → Dose</button> ${tciBtn} </div> ${fields} <div id="result"></div>`;
+updateResult();
+}
+
+function recompPrep(p){
+const s=parseNum(p.solute)||0,v=parseNum(p.vol)||1,su=p.sUnit;
+if(su===‘mg’){p.cMcg=s*1000/v;delete p.cU;}
+else if(su===‘mcg’){p.cMcg=s/v;delete p.cU;}
+else if(su===‘U’){p.cU=s/v;delete p.cMcg;}
+else if(su===‘mg/mL’){p.cMcg=s*1000;delete p.cU;}
+p.label=su===‘mg/mL’?`${p.solute}mg/mL (puro)`:`${p.solute}${su} em ${p.vol}mL`;
+return p;
+}
+function renderEdit(c){
+const isNew=state.view===‘new’;
+if(!state.editForm)state.editForm={id:`d_${Date.now()}`,cat:‘outros’,name:’’,abbr:’’,unit:‘mcg/kg/min’,min:0,max:100,tip:1,preps:[recompPrep({solute:1,sUnit:‘mg’,vol:100})],notes:’’};
+const f=state.editForm;
+const catOpts=CATS.filter(x=>x.id!==‘all’).map(x=>`<option value="${x.id}"${f.cat===x.id?' selected':''}>${x.n}</option>`).join(’’);
+const unitOpts=[‘mcg/kg/min’,‘mcg/kg/h’,‘mg/kg/h’,‘mcg/min’,‘mg/h’,‘U/min’,‘U/h’,‘U/kg/h’].map(u=>`<option value="${u}"${f.unit===u?' selected':''}>${u}</option>`).join(’’);
+const prepEdits=f.preps.map((p,i)=>{
+const sopts=[‘mg’,‘mcg’,‘U’,‘mg/mL’].map(s=>`<option${p.sUnit===s?' selected':''}>${s}</option>`).join(’’);
+const isPure=p.sUnit===‘mg/mL’;
+return`<div class="prep-edit"><div class="prep-edit-grid"> <div><label class="lbl">Soluto</label><input type="text" inputmode="decimal" id="pe-s-${i}" value="${p.solute}"></div> <div><label class="lbl">Unidade</label><select id="pe-u-${i}">${sopts}</select></div> <div><label class="lbl">Volume (mL)</label><input type="text" inputmode="decimal" id="pe-v-${i}" value="${isPure?'-':p.vol}"${isPure?' disabled':''}></div> <button class="del-btn" data-delidx="${i}">✕</button> </div><div class="prep-conc-out" id="pe-c-${i}">→ ${getConcLabel(p)}</div></div>`;
+}).join(’’);
+const notesPlain=f.notes.replace(/<[^>]+>/g,’ ‘).replace(/\s+/g,’ ’).trim();
+c.innerHTML=` <div class="back-row"><button class="btn btn-sm" id="btn-back">← Cancelar</button><div class="drug-heading">${isNew?'Novo medicamento':'Editar: '+f.name}</div></div> <div class="grid2"> <div class="field"><label class="lbl">Nome</label><input type="text" id="ef-name" value="${f.name}" placeholder="Noradrenalina"></div> <div class="field"><label class="lbl">Abreviação</label><input type="text" id="ef-abbr" value="${f.abbr}" placeholder="NA" maxlength="5"></div> </div> <div class="grid2"> <div class="field"><label class="lbl">Categoria</label><select id="ef-cat">${catOpts}</select></div> <div class="field"><label class="lbl">Unidade de dose</label><select id="ef-unit">${unitOpts}</select></div> </div> <div class="grid3"> <div class="field"><label class="lbl">Dose mín</label><input type="text" inputmode="decimal" id="ef-min" value="${f.min}"></div> <div class="field"><label class="lbl">Dose máx</label><input type="text" inputmode="decimal" id="ef-max" value="${f.max}"></div> <div class="field"><label class="lbl">Dose típica</label><input type="text" inputmode="decimal" id="ef-tip" value="${f.tip}"></div> </div> <div class="field"><label class="lbl">Preparação / Concentração</label>${prepEdits} <button class="btn" id="btn-addprep" style="width:100%;margin-top:6px;padding:10px">+ Adicionar preparação alternativa</button> </div> <div class="field"><label class="lbl">Observações clínicas</label><textarea id="ef-notes" rows="4" style="resize:vertical;font-size:13px">${notesPlain}</textarea></div> <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px"> ${!isNew?`<button class="danger-btn" id="btn-del">Excluir</button>`:'<div></div>'} <div class="save-row"><button class="btn" id="btn-cancel-edit">Cancelar</button><button class="save-btn" id="btn-save">Salvar</button></div> </div>`;
+}
+function readEditForm(){
+const f=state.editForm;
+f.name=val(‘ef-name’).trim();f.abbr=val(‘ef-abbr’).trim().toUpperCase();
+f.cat=val(‘ef-cat’);f.unit=val(‘ef-unit’);
+f.min=parseNum(val(‘ef-min’))||0;f.max=parseNum(val(‘ef-max’))||0;f.tip=parseNum(val(‘ef-tip’))||0;
+f.notes=val(‘ef-notes’);
+f.preps.forEach((p,i)=>{
+p.solute=parseNum(el(`pe-s-${i}`)?.value)||0;
+p.sUnit=el(`pe-u-${i}`)?.value||‘mg’;
+p.vol=p.sUnit!==‘mg/mL’?parseNum(el(`pe-v-${i}`)?.value)||1:1;
+recompPrep(p);
+});
+return f;
+}
+function updatePrepConc(i){
+const f=state.editForm;if(!f||!f.preps[i])return;
+const p=f.preps[i];
+p.solute=parseNum(el(`pe-s-${i}`)?.value)||0;
+p.sUnit=el(`pe-u-${i}`)?.value||‘mg’;
+p.vol=p.sUnit!==‘mg/mL’?parseNum(el(`pe-v-${i}`)?.value)||1:1;
+recompPrep(p);
+const co=el(`pe-c-${i}`);if(co)co.textContent=`→ ${getConcLabel(p)}`;
+const vi=el(`pe-v-${i}`);if(vi)vi.disabled=(p.sUnit===‘mg/mL’);
+}
+
+function attachEvents(){
+document.querySelectorAll(“input[inputmode=‘decimal’]”).forEach(enableComma);
+const v=state.view;
+if(v===‘catalog’){
+on(‘search-inp’,‘input’,e=>setState({search:e.target.value}));
+document.querySelectorAll(’.cat-btn’).forEach(btn=>btn.addEventListener(‘click’,()=>setState({catFilter:btn.dataset.cat})));
+document.querySelectorAll(’.drug-card’).forEach(btn=>btn.addEventListener(‘click’,()=>{
+const drug=getDrug(btn.dataset.drug);
+const defModel=drug?.tciModels?.[0]||’’;
+cv={W:’’,dose:’’,mlh:’’,mode:‘dose’,tciCp:’’,tciModel:defModel,tciAge:’’,tciHeight:’’,tciSex:‘M’};
+setState({view:‘calc’,selId:btn.dataset.drug,selPrep:0});
+}));
+on(‘btn-add’,‘click’,()=>{state.editForm=null;setState({view:‘new’});});
+}
+if(v===‘calc’){
+on(‘btn-back’,‘click’,()=>setState({view:‘catalog’}));
+on(‘btn-edit’,‘click’,()=>{state.editForm=JSON.parse(JSON.stringify(getDrug(state.selId)));setState({view:‘edit’});});
+document.querySelectorAll(’.prep-btn’).forEach(btn=>btn.addEventListener(‘click’,()=>{
+state.selPrep=parseInt(btn.dataset.prep)||0;
+document.querySelectorAll(’.prep-btn’).forEach(b=>b.classList.toggle(‘active’,b===btn));
+updateResult();
+}));
+on(‘btn-mode-dose’,‘click’,()=>{cv.mode=‘dose’;setState({view:‘calc’});});
+on(‘btn-mode-mlh’,‘click’,()=>{cv.mode=‘mlh’;setState({view:‘calc’});});
+on(‘btn-mode-tci’,‘click’,()=>{cv.mode=‘tci’;setState({view:‘calc’});});
+// Seletores de modelo TCI
+[‘marsh’,‘schnider’,‘minto’,‘bovill’].forEach(m=>{
+on(`btn-tci-${m}`,‘click’,()=>{cv.tciModel=m;setState({view:‘calc’});});
+});
+on(‘inp-tci-sex’,‘change’,e=>{cv.tciSex=e.target.value;updateResult();});
+// Inputs sem re-render
+on(‘inp-W’,‘input’,e=>{cv.W=e.target.value;updateResult();});
+on(‘inp-dose’,‘input’,e=>{cv.dose=e.target.value;updateResult();});
+on(‘inp-mlh’,‘input’,e=>{cv.mlh=e.target.value;updateResult();});
+on(‘inp-tci-cp’,‘input’,e=>{cv.tciCp=e.target.value;updateResult();});
+on(‘inp-tci-age’,‘input’,e=>{cv.tciAge=e.target.value;updateResult();});
+on(‘inp-tci-ht’,‘input’,e=>{cv.tciHeight=e.target.value;updateResult();});
+}
+if(v===‘edit’||v===‘new’){
+on(‘btn-back’,‘click’,()=>setState({view:v===‘new’?‘catalog’:‘calc’,editForm:null}));
+on(‘btn-cancel-edit’,‘click’,()=>setState({view:v===‘new’?‘catalog’:‘calc’,editForm:null}));
+on(‘btn-save’,‘click’,()=>{
+const f=readEditForm();if(!f.name)return;
+const idx=drugs.findIndex(d=>d.id===f.id);
+if(idx>=0)drugs[idx]={…f};else drugs.push({…f});
+setState({view:‘calc’,selId:f.id,selPrep:0,editForm:null});
+});
+on(‘btn-del’,‘click’,()=>{if(confirm(‘Excluir ‘+state.editForm?.name+’?’)){drugs=drugs.filter(d=>d.id!==state.editForm?.id);setState({view:‘catalog’,editForm:null});}});
+on(‘btn-addprep’,‘click’,()=>{readEditForm();state.editForm.preps.push(recompPrep({solute:1,sUnit:‘mg’,vol:100}));render();attachEvents();});
+document.querySelectorAll(’[data-delidx]’).forEach(btn=>btn.addEventListener(‘click’,()=>{readEditForm();state.editForm.preps.splice(parseInt(btn.dataset.delidx),1);render();attachEvents();}));
+const n=state.editForm?.preps?.length||0;
+for(let i=0;i<n;i++){[`pe-s-${i}`,`pe-u-${i}`,`pe-v-${i}`].forEach(id=>{on(id,‘input’,()=>updatePrepConc(i));on(id,‘change’,()=>updatePrepConc(i));});}
+}
+}
+render();
+</script>
+
+</body>
+</html>
