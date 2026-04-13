@@ -1,0 +1,1 @@
+Offline-capable PWA for calculating drug infusion rates and doses in anesthesia and critical care. Includes vasopressors, sedatives, analgesics, neuromuscular blockers, and TCI pharmacokinetic models (Marsh, Schnider, Minto, Bovill) for propofol, remifentanil, and sufentanil.
