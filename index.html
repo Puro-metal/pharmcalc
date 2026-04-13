@@ -1,5 +1,4 @@
 <!DOCTYPE html>
-
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
@@ -108,100 +107,101 @@ button:active{opacity:.7}
 <div id="app"></div>
 <script>
 
+
 // ── Utilitários ────────────────────────────────────────────────────────────
 function parseNum(s){
-if(s===undefined||s===null||s===’’)return NaN;
-return parseFloat(String(s).replace(’,’,’.’).replace(/[^0-9.-]/g,’’));
+  if(s===undefined||s===null||s==='')return NaN;
+  return parseFloat(String(s).replace(',','.').replace(/[^0-9.\-]/g,''));
 }
 function enableComma(inp){
-inp.addEventListener(‘keydown’,function(e){
-if(e.key===’,’){
-e.preventDefault();
-const p=this.selectionStart,v=this.value;
-if(v.indexOf(’.’)===-1){this.value=v.slice(0,p)+’.’+v.slice(this.selectionEnd);this.selectionStart=this.selectionEnd=p+1;}
-}
-});
+  inp.addEventListener('keydown',function(e){
+    if(e.key===','){
+      e.preventDefault();
+      const p=this.selectionStart,v=this.value;
+      if(v.indexOf('.')===-1){this.value=v.slice(0,p)+'.'+v.slice(this.selectionEnd);this.selectionStart=this.selectionEnd=p+1;}
+    }
+  });
 }
 function lbm(W,H,sex){
-return sex===‘M’?1.1*W-128*(W/H)**2:1.07*W-148*(W/H)**2;
+  return sex==='M'?1.1*W-128*(W/H)**2:1.07*W-148*(W/H)**2;
 }
 
 // ── Modelos TCI ────────────────────────────────────────────────────────────
 // Simulação genérica de 3 compartimentos (Euler, dt=0.05 min)
 function sim3comp(k10,k12,k13,k21,k31,V1,phases,snapTimes){
-const dt=0.05;
-let A1=0,A2=0,A3=0;
-const snaps={};
-const maxT=Math.max(…snapTimes)+1;
-for(let t=0;t<=maxT;t+=dt){
-const r=phases.find(p=>t>=p.s&&t<p.e)?.r||0;
-const dA1=r-(k10+k12+k13)*A1+k21*A2+k31*A3;
-const dA2=k12*A1-k21*A2;
-const dA3=k13*A1-k31*A3;
-A1+=dA1*dt;A2+=dA2*dt;A3+=dA3*dt;
-const ti=Math.round(t*10);
-snapTimes.forEach(tt=>{if(ti===Math.round(tt*10))snaps[tt]=A1/V1;});
-}
-return snaps;
+  const dt=0.05;
+  let A1=0,A2=0,A3=0;
+  const snaps={};
+  const maxT=Math.max(...snapTimes)+1;
+  for(let t=0;t<=maxT;t+=dt){
+    const r=phases.find(p=>t>=p.s&&t<p.e)?.r||0;
+    const dA1=r-(k10+k12+k13)*A1+k21*A2+k31*A3;
+    const dA2=k12*A1-k21*A2;
+    const dA3=k13*A1-k31*A3;
+    A1+=dA1*dt;A2+=dA2*dt;A3+=dA3*dt;
+    const ti=Math.round(t*10);
+    snapTimes.forEach(tt=>{if(ti===Math.round(tt*10))snaps[tt]=A1/V1;});
+  }
+  return snaps;
 }
 function bsearch(fn,lo,hi,target,n=28){
-for(let i=0;i<n;i++){const m=(lo+hi)/2;fn(m)<target?lo=m:hi=m;}
-return(lo+hi)/2;
+  for(let i=0;i<n;i++){const m=(lo+hi)/2;fn(m)<target?lo=m:hi=m;}
+  return(lo+hi)/2;
 }
 function buildPhases(k10,k12,k13,k21,k31,V1,Cl,targetCp,toMlh){
-const rSS=targetCp*Cl;
-const r1=bsearch(r=>sim3comp(k10,k12,k13,k21,k31,V1,[{s:0,e:10,r},{s:10,e:9999,r:rSS}],[10])[10]||0,0,rSS*20,targetCp);
-const r2=bsearch(r=>sim3comp(k10,k12,k13,k21,k31,V1,[{s:0,e:10,r:r1},{s:10,e:20,r},{s:20,e:9999,r:rSS}],[20])[20]||0,0,rSS*8,targetCp);
-const snaps=sim3comp(k10,k12,k13,k21,k31,V1,[{s:0,e:10,r:r1},{s:10,e:20,r:r2},{s:20,e:9999,r:rSS}],[10,20,40]);
-return[
-{label:‘Fase 1’,sub:‘0 – 10 min’, mlh:toMlh(r1), cp:snaps[10]||0},
-{label:‘Fase 2’,sub:‘10 – 20 min’,mlh:toMlh(r2), cp:snaps[20]||0},
-{label:‘Manutenção’,sub:’> 20 min’, mlh:toMlh(rSS),cp:snaps[40]||0},
-];
+  const rSS=targetCp*Cl;
+  const r1=bsearch(r=>sim3comp(k10,k12,k13,k21,k31,V1,[{s:0,e:10,r},{s:10,e:9999,r:rSS}],[10])[10]||0,0,rSS*20,targetCp);
+  const r2=bsearch(r=>sim3comp(k10,k12,k13,k21,k31,V1,[{s:0,e:10,r:r1},{s:10,e:20,r},{s:20,e:9999,r:rSS}],[20])[20]||0,0,rSS*8,targetCp);
+  const snaps=sim3comp(k10,k12,k13,k21,k31,V1,[{s:0,e:10,r:r1},{s:10,e:20,r:r2},{s:20,e:9999,r:rSS}],[10,20,40]);
+  return[
+    {label:'Fase 1',sub:'0 – 10 min', mlh:toMlh(r1), cp:snaps[10]||0},
+    {label:'Fase 2',sub:'10 – 20 min',mlh:toMlh(r2), cp:snaps[20]||0},
+    {label:'Manutenção',sub:'> 20 min', mlh:toMlh(rSS),cp:snaps[40]||0},
+  ];
 }
 
 // Marsh — Propofol (Roberts 1988 / Diprifusor)
 // V peso-dependente, k-values fixos
 // cMcg: concentração da preparação em mcg/mL (ex: pure(10) → 10000 mcg/mL)
 function marshCalc(W,targetCp,cMcg){
-const k10=0.119,k12=0.112,k13=0.0419,k21=0.055,k31=0.0033;
-const V1=0.228*W;
-const Cl=k10*V1;
-const concMgMl=cMcg/1000; // converte mcg/mL → mg/mL (rate do modelo é em mg/min)
-return{phases:buildPhases(k10,k12,k13,k21,k31,V1,Cl,targetCp,r=>(r*60)/concMgMl),
-info:`V1=${V1.toFixed(1)}L · Cl=${Cl.toFixed(3)}L/min · Prep: ${concMgMl.toFixed(1)}mg/mL`};
+  const k10=0.119,k12=0.112,k13=0.0419,k21=0.055,k31=0.0033;
+  const V1=0.228*W;
+  const Cl=k10*V1;
+  const concMgMl=cMcg/1000; // converte mcg/mL → mg/mL (rate do modelo é em mg/min)
+  return{phases:buildPhases(k10,k12,k13,k21,k31,V1,Cl,targetCp,r=>(r*60)/concMgMl),
+    info:`V1=${V1.toFixed(1)}L · Cl=${Cl.toFixed(3)}L/min · Prep: ${concMgMl.toFixed(1)}mg/mL`};
 }
 
 // Schnider — Propofol (Schnider 1998/1999)
 function schniderCalc(W,H,age,sex,targetCp,cMcg){
-const lbmV=lbm(W,H,sex);
-const V1=4.27;
-const V2=18.9-0.391*(age-53);
-const k10=0.443+0.0107*(W-77)-0.0159*(lbmV-59)+0.0062*(H-177);
-const k12=(0.302-0.0056*(age-53));
-const k13=0.196;
-const k21=(1.29-0.024*(age-53))/V2;
-const k31=0.0035;
-const Cl=k10*V1;
-const concMgMl=cMcg/1000;
-return{phases:buildPhases(k10,k12,k13,k21,k31,V1,Cl,targetCp,r=>(r*60)/concMgMl),
-info:`LBM=${lbmV.toFixed(1)}kg · V1=${V1.toFixed(2)}L · Cl=${Cl.toFixed(3)}L/min · Prep: ${concMgMl.toFixed(1)}mg/mL`};
+  const lbmV=lbm(W,H,sex);
+  const V1=4.27;
+  const V2=18.9-0.391*(age-53);
+  const k10=0.443+0.0107*(W-77)-0.0159*(lbmV-59)+0.0062*(H-177);
+  const k12=(0.302-0.0056*(age-53));
+  const k13=0.196;
+  const k21=(1.29-0.024*(age-53))/V2;
+  const k31=0.0035;
+  const Cl=k10*V1;
+  const concMgMl=cMcg/1000;
+  return{phases:buildPhases(k10,k12,k13,k21,k31,V1,Cl,targetCp,r=>(r*60)/concMgMl),
+    info:`LBM=${lbmV.toFixed(1)}kg · V1=${V1.toFixed(2)}L · Cl=${Cl.toFixed(3)}L/min · Prep: ${concMgMl.toFixed(1)}mg/mL`};
 }
 
 // Minto — Remifentanil (Minto 1997)
 // Unidades: V em L, Cl em L/min, Cp em ng/mL = mcg/L, Rate em mcg/min
 // cMcg: concentração da preparação em mcg/mL
 function mintoCalc(W,H,age,sex,targetCp,cMcg){
-const lbmV=lbm(W,H,sex);
-const V1=5.1-0.0201*(age-40)+0.072*(lbmV-55);
-const V2=9.82-0.0811*(age-40)+0.108*(lbmV-55);
-const V3=5.42;
-const Cl1=2.6-0.0162*(age-40)+0.0191*(lbmV-55);
-const Cl2=2.05-0.0301*(age-40);
-const Cl3=0.076-0.00113*(age-40);
-const k10=Cl1/V1,k12=Cl2/V1,k21=Cl2/V2,k13=Cl3/V1,k31=Cl3/V3;
-return{phases:buildPhases(k10,k12,k13,k21,k31,V1,Cl1,targetCp,r=>(r*60)/cMcg),
-info:`LBM=${lbmV.toFixed(1)}kg · V1=${V1.toFixed(2)}L · Cl=${Cl1.toFixed(3)}L/min · Prep: ${cMcg.toFixed(1)}mcg/mL`};
+  const lbmV=lbm(W,H,sex);
+  const V1=5.1-0.0201*(age-40)+0.072*(lbmV-55);
+  const V2=9.82-0.0811*(age-40)+0.108*(lbmV-55);
+  const V3=5.42;
+  const Cl1=2.6-0.0162*(age-40)+0.0191*(lbmV-55);
+  const Cl2=2.05-0.0301*(age-40);
+  const Cl3=0.076-0.00113*(age-40);
+  const k10=Cl1/V1,k12=Cl2/V1,k21=Cl2/V2,k13=Cl3/V1,k31=Cl3/V3;
+  return{phases:buildPhases(k10,k12,k13,k21,k31,V1,Cl1,targetCp,r=>(r*60)/cMcg),
+    info:`LBM=${lbmV.toFixed(1)}kg · V1=${V1.toFixed(2)}L · Cl=${Cl1.toFixed(3)}L/min · Prep: ${cMcg.toFixed(1)}mcg/mL`};
 }
 
 // Bovill — Sufentanil (Bovill 1984)
@@ -209,22 +209,22 @@ info:`LBM=${lbmV.toFixed(1)}kg · V1=${V1.toFixed(2)}L · Cl=${Cl1.toFixed(3)}L/
 // Cp em ng/mL = mcg/L, Rate em mcg/min
 // cMcg: concentração da preparação em mcg/mL
 function bovillCalc(W,targetCp,cMcg){
-const k10=0.0645,k12=0.1199,k13=0.0073,k21=0.0269,k31=0.00095;
-const V1=0.204*W;
-const Cl=k10*V1;
-return{phases:buildPhases(k10,k12,k13,k21,k31,V1,Cl,targetCp,r=>(r*60)/cMcg),
-info:`V1=${V1.toFixed(1)}L · Cl=${Cl.toFixed(4)}L/min · Prep: ${cMcg.toFixed(1)}mcg/mL`};
+  const k10=0.0645,k12=0.1199,k13=0.0073,k21=0.0269,k31=0.00095;
+  const V1=0.204*W;
+  const Cl=k10*V1;
+  return{phases:buildPhases(k10,k12,k13,k21,k31,V1,Cl,targetCp,r=>(r*60)/cMcg),
+    info:`V1=${V1.toFixed(1)}L · Cl=${Cl.toFixed(4)}L/min · Prep: ${cMcg.toFixed(1)}mcg/mL`};
 }
 
 // ── Dados ──────────────────────────────────────────────────────────────────
-const CAT_COLORS={bnm:’#7F77DD’,sedo:’#378ADD’,analg:’#D4537E’,vaso:’#E24B4A’,inot:’#EF9F27’,vasod:’#639922’,outros:’#888780’};
-const CATS=[{id:‘all’,n:‘Todos’},{id:‘bnm’,n:‘BNM’},{id:‘sedo’,n:‘Sedação’},{id:‘analg’,n:‘Analgesia’},{id:‘vaso’,n:‘Vasopressores’},{id:‘inot’,n:‘Inotrópicos’},{id:‘vasod’,n:‘Vasodilatadores’},{id:‘outros’,n:‘Outros’}];
+const CAT_COLORS={bnm:'#7F77DD',sedo:'#378ADD',analg:'#D4537E',vaso:'#E24B4A',inot:'#EF9F27',vasod:'#639922',outros:'#888780'};
+const CATS=[{id:'all',n:'Todos'},{id:'bnm',n:'BNM'},{id:'sedo',n:'Sedação'},{id:'analg',n:'Analgesia'},{id:'vaso',n:'Vasopressores'},{id:'inot',n:'Inotrópicos'},{id:'vasod',n:'Vasodilatadores'},{id:'outros',n:'Outros'}];
 const CAT_NAMES=Object.fromEntries(CATS.map(c=>[c.id,c.n]));
 
-function mg(s,v){return{label:`${s}mg em ${v}mL`,solute:s,sUnit:‘mg’,vol:v,cMcg:(s*1000)/v}}
-function mcg(s,v){return{label:`${s}mcg em ${v}mL`,solute:s,sUnit:‘mcg’,vol:v,cMcg:s/v}}
-function unid(s,v){return{label:`${s}U em ${v}mL`,solute:s,sUnit:‘U’,vol:v,cU:s/v}}
-function pure(c){return{label:`${c}mg/mL (puro)`,solute:c,sUnit:‘mg/mL’,vol:1,cMcg:c*1000}}
+function mg(s,v){return{label:`${s}mg em ${v}mL`,solute:s,sUnit:'mg',vol:v,cMcg:(s*1000)/v}}
+function mcg(s,v){return{label:`${s}mcg em ${v}mL`,solute:s,sUnit:'mcg',vol:v,cMcg:s/v}}
+function unid(s,v){return{label:`${s}U em ${v}mL`,solute:s,sUnit:'U',vol:v,cU:s/v}}
+function pure(c){return{label:`${c}mg/mL (puro)`,solute:c,sUnit:'mg/mL',vol:1,cMcg:c*1000}}
 
 const N={
 atrac:`<ul><li><b>Mecanismo:</b> bloqueio NM não despolarizante; degradação de Hofmann + hidrólise éster — independe de fígado e rim</li><li><b>Indicação:</b> BNM contínuo em UTI, especialmente em disfunção orgânica múltipla</li><li><b>Monitorização:</b> TOF obrigatório; alvo T1/T0 ≤25% ou T4/T1 ausente</li><li><b>Atenção:</b> histamino-liberador em bolus rápido — broncoespasmo e hipotensão; infundir lentamente</li><li><b>PK:</b> T½ ~20 min; laudanosina acumula em infusões prolongadas (relevância clínica controversa)</li></ul>`,
@@ -257,101 +257,100 @@ amio:`<ul><li><b>Mecanismo:</b> classe III (bloqueio K⁺) + I, II e IV — anti
 };
 
 let drugs=[
-{id:‘atrac’,cat:‘bnm’,name:‘Atracúrio’,abbr:‘ATR’,unit:‘mg/kg/h’,min:0.3,max:0.6,tip:0.4,preps:[mg(500,500)],notes:N.atrac},
-{id:‘cisa’,cat:‘bnm’,name:‘Cisatracúrio’,abbr:‘CSA’,unit:‘mg/kg/h’,min:0.03,max:0.06,tip:0.04,preps:[mg(40,400)],notes:N.cisa},
-{id:‘pancu’,cat:‘bnm’,name:‘Pancurônio’,abbr:‘PAN’,unit:‘mg/kg/h’,min:0.05,max:0.1,tip:0.06,preps:[mg(10,100)],notes:N.pancu},
-{id:‘rocu’,cat:‘bnm’,name:‘Rocurônio’,abbr:‘ROC’,unit:‘mg/kg/h’,min:0.3,max:0.6,tip:0.4,preps:[mg(500,50)],notes:N.rocu},
-{id:‘prop’,cat:‘sedo’,name:‘Propofol’,abbr:‘PRO’,unit:‘mcg/kg/min’,min:25,max:200,tip:50,preps:[pure(10)],notes:N.prop,
-tci:true,tciModels:[‘marsh’,‘schnider’],tciUnit:‘mcg/mL’,tciRange:‘2–6’,tciTip:‘3.0’},
-{id:‘midaz’,cat:‘sedo’,name:‘Midazolam’,abbr:‘MDZ’,unit:‘mg/kg/h’,min:0.02,max:0.1,tip:0.05,preps:[mg(150,150)],notes:N.midaz},
-{id:‘dex’,cat:‘sedo’,name:‘Dexmedetomidina’,abbr:‘DEX’,unit:‘mcg/kg/h’,min:0.2,max:1.5,tip:0.7,preps:[mcg(200,50)],notes:N.dex},
-{id:‘clon’,cat:‘sedo’,name:‘Clonidina’,abbr:‘CLO’,unit:‘mcg/kg/h’,min:0.5,max:2.0,tip:1.0,preps:[mcg(300,500)],notes:N.clon},
-{id:‘ket’,cat:‘sedo’,name:‘Cetamina’,abbr:‘KET’,unit:‘mg/kg/h’,min:0.1,max:0.5,tip:0.2,preps:[mg(500,500)],notes:N.ket},
-{id:‘fent’,cat:‘analg’,name:‘Fentanil’,abbr:‘FNT’,unit:‘mcg/kg/h’,min:0.5,max:2.0,tip:1.0,preps:[mcg(2500,250)],notes:N.fent},
-{id:‘suf’,cat:‘analg’,name:‘Sufentanil’,abbr:‘SUF’,unit:‘mcg/kg/h’,min:0.1,max:0.5,tip:0.2,preps:[mcg(250,250)],notes:N.suf,
-tci:true,tciModels:[‘bovill’],tciUnit:‘ng/mL’,tciRange:‘0.1–2’,tciTip:‘0.5’},
-{id:‘remi’,cat:‘analg’,name:‘Remifentanil’,abbr:‘RMF’,unit:‘mcg/kg/min’,min:0.05,max:0.5,tip:0.1,preps:[mg(5,250)],notes:N.remi,
-tci:true,tciModels:[‘minto’],tciUnit:‘ng/mL’,tciRange:‘1–8’,tciTip:‘3.0’},
-{id:‘morfi’,cat:‘analg’,name:‘Morfina’,abbr:‘MRF’,unit:‘mg/kg/h’,min:0.01,max:0.05,tip:0.02,preps:[mg(50,250)],notes:N.morfi},
-{id:‘meta’,cat:‘analg’,name:‘Metadona’,abbr:‘MTD’,unit:‘mg/kg/h’,min:0.01,max:0.05,tip:0.02,preps:[mg(50,250)],notes:N.meta},
-{id:‘nora’,cat:‘vaso’,name:‘Noradrenalina’,abbr:‘NA’,unit:‘mcg/kg/min’,min:0.01,max:3.0,tip:0.1,preps:[mg(8,250)],notes:N.nora},
-{id:‘adre’,cat:‘vaso’,name:‘Adrenalina’,abbr:‘EPI’,unit:‘mcg/kg/min’,min:0.01,max:1.0,tip:0.05,preps:[mg(4,250)],notes:N.adre},
-{id:‘vasop’,cat:‘vaso’,name:‘Vasopressina’,abbr:‘VP’,unit:‘U/min’,min:0.01,max:0.04,tip:0.03,preps:[unid(20,100)],notes:N.vasop},
-{id:‘feni’,cat:‘vaso’,name:‘Fenilefrina’,abbr:‘PE’,unit:‘mcg/kg/min’,min:0.5,max:5.0,tip:1.5,preps:[mg(100,250)],notes:N.feni},
-{id:‘dopa’,cat:‘vaso’,name:‘Dopamina’,abbr:‘DA’,unit:‘mcg/kg/min’,min:2,max:20,tip:5,preps:[mg(400,250)],notes:N.dopa},
-{id:‘dobu’,cat:‘inot’,name:‘Dobutamina’,abbr:‘DB’,unit:‘mcg/kg/min’,min:2.5,max:20,tip:5,preps:[mg(250,250)],notes:N.dobu},
-{id:‘mili’,cat:‘inot’,name:‘Milrinona’,abbr:‘ML’,unit:‘mcg/kg/min’,min:0.375,max:0.75,tip:0.5,preps:[mg(20,100)],notes:N.mili},
-{id:‘levo’,cat:‘inot’,name:‘Levosimendan’,abbr:‘LS’,unit:‘mcg/kg/min’,min:0.05,max:0.2,tip:0.1,preps:[mg(12.5,500)],notes:N.levo},
-{id:‘ntp’,cat:‘vasod’,name:‘Nitroprussiato’,abbr:‘NTP’,unit:‘mcg/kg/min’,min:0.5,max:8,tip:1,preps:[mg(50,250)],notes:N.ntp},
-{id:‘ntg’,cat:‘vasod’,name:‘Nitroglicerina’,abbr:‘NTG’,unit:‘mcg/min’,min:5,max:400,tip:50,preps:[mg(25,250)],notes:N.ntg},
-{id:‘insu’,cat:‘outros’,name:‘Insulina Regular’,abbr:‘INS’,unit:‘U/h’,min:0.5,max:20,tip:2,preps:[unid(100,100)],notes:N.insu},
-{id:‘salb’,cat:‘outros’,name:‘Salbutamol’,abbr:‘SLB’,unit:‘mcg/min’,min:5,max:20,tip:10,preps:[mg(5,250)],notes:N.salb},
-{id:‘amio’,cat:‘outros’,name:‘Amiodarona’,abbr:‘AMI’,unit:‘mg/h’,min:30,max:90,tip:60,preps:[mg(900,500)],notes:N.amio},
+  {id:'atrac',cat:'bnm',name:'Atracúrio',abbr:'ATR',unit:'mg/kg/h',min:0.3,max:0.6,tip:0.4,preps:[mg(500,500)],notes:N.atrac},
+  {id:'cisa',cat:'bnm',name:'Cisatracúrio',abbr:'CSA',unit:'mg/kg/h',min:0.03,max:0.06,tip:0.04,preps:[mg(40,400)],notes:N.cisa},
+  {id:'pancu',cat:'bnm',name:'Pancurônio',abbr:'PAN',unit:'mg/kg/h',min:0.05,max:0.1,tip:0.06,preps:[mg(10,100)],notes:N.pancu},
+  {id:'rocu',cat:'bnm',name:'Rocurônio',abbr:'ROC',unit:'mg/kg/h',min:0.3,max:0.6,tip:0.4,preps:[mg(500,50)],notes:N.rocu},
+  {id:'prop',cat:'sedo',name:'Propofol',abbr:'PRO',unit:'mcg/kg/min',min:25,max:200,tip:50,preps:[pure(10)],notes:N.prop,
+   tci:true,tciModels:['marsh','schnider'],tciUnit:'mcg/mL',tciRange:'2–6',tciTip:'3.0'},
+  {id:'midaz',cat:'sedo',name:'Midazolam',abbr:'MDZ',unit:'mg/kg/h',min:0.02,max:0.1,tip:0.05,preps:[mg(150,150)],notes:N.midaz},
+  {id:'dex',cat:'sedo',name:'Dexmedetomidina',abbr:'DEX',unit:'mcg/kg/h',min:0.2,max:1.5,tip:0.7,preps:[mcg(200,50)],notes:N.dex},
+  {id:'clon',cat:'sedo',name:'Clonidina',abbr:'CLO',unit:'mcg/kg/h',min:0.5,max:2.0,tip:1.0,preps:[mcg(300,500)],notes:N.clon},
+  {id:'ket',cat:'sedo',name:'Cetamina',abbr:'KET',unit:'mg/kg/h',min:0.1,max:0.5,tip:0.2,preps:[mg(500,500)],notes:N.ket},
+  {id:'fent',cat:'analg',name:'Fentanil',abbr:'FNT',unit:'mcg/kg/h',min:0.5,max:2.0,tip:1.0,preps:[mcg(2500,250)],notes:N.fent},
+  {id:'suf',cat:'analg',name:'Sufentanil',abbr:'SUF',unit:'mcg/kg/h',min:0.1,max:0.5,tip:0.2,preps:[mcg(250,250)],notes:N.suf,
+   tci:true,tciModels:['bovill'],tciUnit:'ng/mL',tciRange:'0.1–2',tciTip:'0.5'},
+  {id:'remi',cat:'analg',name:'Remifentanil',abbr:'RMF',unit:'mcg/kg/min',min:0.05,max:0.5,tip:0.1,preps:[mg(5,250)],notes:N.remi,
+   tci:true,tciModels:['minto'],tciUnit:'ng/mL',tciRange:'1–8',tciTip:'3.0'},
+  {id:'morfi',cat:'analg',name:'Morfina',abbr:'MRF',unit:'mg/kg/h',min:0.01,max:0.05,tip:0.02,preps:[mg(50,250)],notes:N.morfi},
+  {id:'meta',cat:'analg',name:'Metadona',abbr:'MTD',unit:'mg/kg/h',min:0.01,max:0.05,tip:0.02,preps:[mg(50,250)],notes:N.meta},
+  {id:'nora',cat:'vaso',name:'Noradrenalina',abbr:'NA',unit:'mcg/kg/min',min:0.01,max:3.0,tip:0.1,preps:[mg(8,250)],notes:N.nora},
+  {id:'adre',cat:'vaso',name:'Adrenalina',abbr:'EPI',unit:'mcg/kg/min',min:0.01,max:1.0,tip:0.05,preps:[mg(4,250)],notes:N.adre},
+  {id:'vasop',cat:'vaso',name:'Vasopressina',abbr:'VP',unit:'U/min',min:0.01,max:0.04,tip:0.03,preps:[unid(20,100)],notes:N.vasop},
+  {id:'feni',cat:'vaso',name:'Fenilefrina',abbr:'PE',unit:'mcg/kg/min',min:0.5,max:5.0,tip:1.5,preps:[mg(100,250)],notes:N.feni},
+  {id:'dopa',cat:'vaso',name:'Dopamina',abbr:'DA',unit:'mcg/kg/min',min:2,max:20,tip:5,preps:[mg(400,250)],notes:N.dopa},
+  {id:'dobu',cat:'inot',name:'Dobutamina',abbr:'DB',unit:'mcg/kg/min',min:2.5,max:20,tip:5,preps:[mg(250,250)],notes:N.dobu},
+  {id:'mili',cat:'inot',name:'Milrinona',abbr:'ML',unit:'mcg/kg/min',min:0.375,max:0.75,tip:0.5,preps:[mg(20,100)],notes:N.mili},
+  {id:'levo',cat:'inot',name:'Levosimendan',abbr:'LS',unit:'mcg/kg/min',min:0.05,max:0.2,tip:0.1,preps:[mg(12.5,500)],notes:N.levo},
+  {id:'ntp',cat:'vasod',name:'Nitroprussiato',abbr:'NTP',unit:'mcg/kg/min',min:0.5,max:8,tip:1,preps:[mg(50,250)],notes:N.ntp},
+  {id:'ntg',cat:'vasod',name:'Nitroglicerina',abbr:'NTG',unit:'mcg/min',min:5,max:400,tip:50,preps:[mg(25,250)],notes:N.ntg},
+  {id:'insu',cat:'outros',name:'Insulina Regular',abbr:'INS',unit:'U/h',min:0.5,max:20,tip:2,preps:[unid(100,100)],notes:N.insu},
+  {id:'salb',cat:'outros',name:'Salbutamol',abbr:'SLB',unit:'mcg/min',min:5,max:20,tip:10,preps:[mg(5,250)],notes:N.salb},
+  {id:'amio',cat:'outros',name:'Amiodarona',abbr:'AMI',unit:'mg/h',min:30,max:90,tip:60,preps:[mg(900,500)],notes:N.amio},
 ];
 
-let state={view:‘catalog’,selId:null,selPrep:0,catFilter:‘all’,search:’’,editForm:null};
-let cv={W:’’,dose:’’,mlh:’’,mode:‘dose’,tciCp:’’,tciModel:’’,tciAge:’’,tciHeight:’’,tciSex:‘M’};
+let state={view:'catalog',selId:null,selPrep:0,catFilter:'all',search:'',editForm:null};
+let cv={W:'',dose:'',mlh:'',mode:'dose',tciCp:'',tciModel:'',tciAge:'',tciHeight:'',tciSex:'M'};
 
 function getDrug(id){return drugs.find(d=>d.id===id)}
 function getConcLabel(p){
-if(p.cU!=null){const u=p.cU;return u<1?`${u.toFixed(4)} U/mL`:`${u.toFixed(3)} U/mL`;}
-const c=p.cMcg;
-if(c>=1000)return`${(c/1000).toFixed(2)} mg/mL`;
-if(c<1)return`${c.toFixed(4)} mcg/mL`;
-return`${c.toFixed(2)} mcg/mL`;
+  if(p.cU!=null){const u=p.cU;return u<1?`${u.toFixed(4)} U/mL`:`${u.toFixed(3)} U/mL`;}
+  const c=p.cMcg;
+  if(c>=1000)return`${(c/1000).toFixed(2)} mg/mL`;
+  if(c<1)return`${c.toFixed(4)} mcg/mL`;
+  return`${c.toFixed(2)} mcg/mL`;
 }
 function calcMlh(drug,prep,W,dose){
-const w=parseNum(W),d=parseNum(dose);
-if(isNaN(d)||d<=0)return null;
-const isWt=drug.unit.includes(‘kg’);
-if(isWt&&(isNaN(w)||w<=0))return null;
-const u=drug.unit,c=prep.cMcg;
-if(prep.cU!=null){
-if(u===‘U/min’)return(d*60)/prep.cU;
-if(u===‘U/h’)return d/prep.cU;
-if(u===‘U/kg/h’)return(d*w)/prep.cU;
-return null;
-}
-if(u===‘mcg/kg/min’)return(d*w*60)/c;
-if(u===‘mcg/kg/h’)return(d*w)/c;
-if(u===‘mg/kg/h’)return(d*w*1000)/c;
-if(u===‘mcg/min’)return(d*60)/c;
-if(u===‘mg/h’)return(d*1000)/c;
-return null;
+  const w=parseNum(W),d=parseNum(dose);
+  if(isNaN(d)||d<=0)return null;
+  const isWt=drug.unit.includes('kg');
+  if(isWt&&(isNaN(w)||w<=0))return null;
+  const u=drug.unit,c=prep.cMcg;
+  if(prep.cU!=null){
+    if(u==='U/min')return(d*60)/prep.cU;
+    if(u==='U/h')return d/prep.cU;
+    if(u==='U/kg/h')return(d*w)/prep.cU;
+    return null;
+  }
+  if(u==='mcg/kg/min')return(d*w*60)/c;
+  if(u==='mcg/kg/h')return(d*w)/c;
+  if(u==='mg/kg/h')return(d*w*1000)/c;
+  if(u==='mcg/min')return(d*60)/c;
+  if(u==='mg/h')return(d*1000)/c;
+  return null;
 }
 function calcDose(drug,prep,W,mlh){
-const w=parseNum(W),m=parseNum(mlh);
-if(isNaN(m)||m<=0)return null;
-const isWt=drug.unit.includes(‘kg’);
-if(isWt&&(isNaN(w)||w<=0))return null;
-const u=drug.unit,c=prep.cMcg,mcgH=m*c;
-if(prep.cU!=null){
-if(u===‘U/min’)return(m*prep.cU)/60;
-if(u===‘U/h’)return m*prep.cU;
-if(u===‘U/kg/h’)return(m*prep.cU)/w;
-return null;
-}
-if(u===‘mcg/kg/min’)return mcgH/(w*60);
-if(u===‘mcg/kg/h’)return mcgH/w;
-if(u===‘mg/kg/h’)return mcgH/(w*1000);
-if(u===‘mcg/min’)return mcgH/60;
-if(u===‘mg/h’)return mcgH/1000;
-return null;
+  const w=parseNum(W),m=parseNum(mlh);
+  if(isNaN(m)||m<=0)return null;
+  const isWt=drug.unit.includes('kg');
+  if(isWt&&(isNaN(w)||w<=0))return null;
+  const u=drug.unit,c=prep.cMcg,mcgH=m*c;
+  if(prep.cU!=null){
+    if(u==='U/min')return(m*prep.cU)/60;
+    if(u==='U/h')return m*prep.cU;
+    if(u==='U/kg/h')return(m*prep.cU)/w;
+    return null;
+  }
+  if(u==='mcg/kg/min')return mcgH/(w*60);
+  if(u==='mcg/kg/h')return mcgH/w;
+  if(u==='mg/kg/h')return mcgH/(w*1000);
+  if(u==='mcg/min')return mcgH/60;
+  if(u==='mg/h')return mcgH/1000;
+  return null;
 }
 function fmtV(v){
-if(v===null||isNaN(v))return’—’;
-if(v<0.001)return v.toFixed(6);if(v<0.01)return v.toFixed(5);
-if(v<0.1)return v.toFixed(4);if(v<10)return v.toFixed(3);
-return v.toFixed(2);
+  if(v===null||isNaN(v))return'—';
+  if(v<0.001)return v.toFixed(6);if(v<0.01)return v.toFixed(5);
+  if(v<0.1)return v.toFixed(4);if(v<10)return v.toFixed(3);
+  return v.toFixed(2);
 }
-function inRange(v,min,max){return v<min?‘low’:v>max?‘high’:‘ok’}
+function inRange(v,min,max){return v<min?'low':v>max?'high':'ok'}
 
 function tciTable(phases,modelLabel,cp,unit,info){
-const rows=phases.map(p=>`<tr>
-<td><div class="tci-phase"><b>${p.label}</b>${p.sub}</div></td>
-<td><span class="tci-rate">${p.mlh.toFixed(1)}</span> <span style="font-size:11px;color:#888">mL/h</span></td>
-<td><span class="tci-cp">≈ ${p.cp.toFixed(2)} ${unit}</span></td>
-
+  const rows=phases.map(p=>`<tr>
+    <td><div class="tci-phase"><b>${p.label}</b>${p.sub}</div></td>
+    <td><span class="tci-rate">${p.mlh.toFixed(1)}</span> <span style="font-size:11px;color:#888">mL/h</span></td>
+    <td><span class="tci-cp">≈ ${p.cp.toFixed(2)} ${unit}</span></td>
   </tr>`).join('');
   return`<div class="tci-card"><table class="tci-table">
     <thead><tr>
@@ -365,204 +364,256 @@ const rows=phases.map(p=>`<tr>
 }
 
 function updateResult(){
-const box=document.getElementById(‘result’);if(!box)return;
-const drug=getDrug(state.selId);if(!drug){box.innerHTML=’’;return;}
-const prep=drug.preps[Math.min(state.selPrep,drug.preps.length-1)];
+  const box=document.getElementById('result');if(!box)return;
+  const drug=getDrug(state.selId);if(!drug){box.innerHTML='';return;}
+  const prep=drug.preps[Math.min(state.selPrep,drug.preps.length-1)];
 
-if(cv.mode===‘tci’){
-const W=parseNum(cv.W),cp=parseNum(cv.tciCp),age=parseNum(cv.tciAge),ht=parseNum(cv.tciHeight);
-const m=cv.tciModel;
-const unit=drug.tciUnit||‘mcg/mL’;
-const needDemo=m===‘schnider’||m===‘minto’;
-const demoOk=!needDemo||(age>0&&ht>0);
-if(isNaN(W)||W<=0||isNaN(cp)||cp<=0||!demoOk){
-const hint=needDemo?‘Preencha peso, idade, altura e Cp-alvo’:‘Informe peso e Cp-alvo’;
-box.innerHTML=`<div class="result-box empty"><div class="result-lbl">TCI — ${m.charAt(0).toUpperCase()+m.slice(1)}</div><div class="result-val empty">${hint}</div></div>`;
-return;
-}
-const cMcg=prep.cMcg; // concentração da preparação selecionada em mcg/mL
-let res;
-if(m===‘marsh’)    res=marshCalc(W,cp,cMcg);
-else if(m===‘schnider’) res=schniderCalc(W,ht,age,cv.tciSex,cp,cMcg);
-else if(m===‘minto’)    res=mintoCalc(W,ht,age,cv.tciSex,cp,cMcg);
-else if(m===‘bovill’)   res=bovillCalc(W,cp,cMcg);
-else{box.innerHTML=’’;return;}
-const label={marsh:‘Marsh’,schnider:‘Schnider’,minto:‘Minto’,bovill:‘Bovill’}[m]||m;
-box.innerHTML=tciTable(res.phases,label,cp,unit,res.info);
-return;
-}
-if(cv.mode===‘dose’){
-const v=calcMlh(drug,prep,cv.W,cv.dose);
-if(v===null||isNaN(v)||v<=0){box.innerHTML=`<div class="result-box empty"><div class="result-lbl">Velocidade de infusão</div><div class="result-val empty">Preencha os campos acima</div></div>`;return;}
-const d=parseNum(cv.dose),s=isNaN(d)?‘n’:inRange(d,drug.min,drug.max);
-const cls=s===‘high’?‘warn’:s===‘low’?‘info’:’’;
-const badge=s===‘n’?’’:s===‘ok’?`<div class="range-badge ok">✓ Dentro do intervalo terapêutico</div>`:s===‘high’?`<div class="range-badge">⚠ Acima do máximo (${drug.max} ${drug.unit})</div>`:`<div class="range-badge low">ℹ Abaixo do mínimo (${drug.min} ${drug.unit})</div>`;
-box.innerHTML=`<div class="result-box ${cls}"><div class="result-lbl">Velocidade de infusão</div><div class="result-val ${cls}">${v.toFixed(2)}<span class="result-unit">mL/h</span></div></div>${badge}`;
-} else {
-const v=calcDose(drug,prep,cv.W,cv.mlh);
-if(v===null||isNaN(v)||v<=0){box.innerHTML=`<div class="result-box empty"><div class="result-lbl">Dose calculada</div><div class="result-val empty">Preencha os campos acima</div></div>`;return;}
-const s=inRange(v,drug.min,drug.max),cls=s===‘high’?‘warn’:s===‘low’?‘info’:’’;
-const badge=s===‘ok’?`<div class="range-badge ok">✓ Dentro do intervalo terapêutico</div>`:s===‘high’?`<div class="range-badge">⚠ Acima do máximo (${drug.max} ${drug.unit})</div>`:`<div class="range-badge low">ℹ Abaixo do mínimo (${drug.min} ${drug.unit})</div>`;
-box.innerHTML=`<div class="result-box ${cls}"><div class="result-lbl">Dose calculada</div><div class="result-val ${cls}">${fmtV(v)}<span class="result-unit">${drug.unit}</span></div></div>${badge}`;
-}
+  if(cv.mode==='tci'){
+    const W=parseNum(cv.W),cp=parseNum(cv.tciCp),age=parseNum(cv.tciAge),ht=parseNum(cv.tciHeight);
+    const m=cv.tciModel;
+    const unit=drug.tciUnit||'mcg/mL';
+    const needDemo=m==='schnider'||m==='minto';
+    const demoOk=!needDemo||(age>0&&ht>0);
+    if(isNaN(W)||W<=0||isNaN(cp)||cp<=0||!demoOk){
+      const hint=needDemo?'Preencha peso, idade, altura e Cp-alvo':'Informe peso e Cp-alvo';
+      box.innerHTML=`<div class="result-box empty"><div class="result-lbl">TCI — ${m.charAt(0).toUpperCase()+m.slice(1)}</div><div class="result-val empty">${hint}</div></div>`;
+      return;
+    }
+    const cMcg=prep.cMcg; // concentração da preparação selecionada em mcg/mL
+    let res;
+    if(m==='marsh')    res=marshCalc(W,cp,cMcg);
+    else if(m==='schnider') res=schniderCalc(W,ht,age,cv.tciSex,cp,cMcg);
+    else if(m==='minto')    res=mintoCalc(W,ht,age,cv.tciSex,cp,cMcg);
+    else if(m==='bovill')   res=bovillCalc(W,cp,cMcg);
+    else{box.innerHTML='';return;}
+    const label={marsh:'Marsh',schnider:'Schnider',minto:'Minto',bovill:'Bovill'}[m]||m;
+    box.innerHTML=tciTable(res.phases,label,cp,unit,res.info);
+    return;
+  }
+  if(cv.mode==='dose'){
+    const v=calcMlh(drug,prep,cv.W,cv.dose);
+    if(v===null||isNaN(v)||v<=0){box.innerHTML=`<div class="result-box empty"><div class="result-lbl">Velocidade de infusão</div><div class="result-val empty">Preencha os campos acima</div></div>`;return;}
+    const d=parseNum(cv.dose),s=isNaN(d)?'n':inRange(d,drug.min,drug.max);
+    const cls=s==='high'?'warn':s==='low'?'info':'';
+    const badge=s==='n'?'':s==='ok'?`<div class="range-badge ok">✓ Dentro do intervalo terapêutico</div>`:s==='high'?`<div class="range-badge">⚠ Acima do máximo (${drug.max} ${drug.unit})</div>`:`<div class="range-badge low">ℹ Abaixo do mínimo (${drug.min} ${drug.unit})</div>`;
+    box.innerHTML=`<div class="result-box ${cls}"><div class="result-lbl">Velocidade de infusão</div><div class="result-val ${cls}">${v.toFixed(2)}<span class="result-unit">mL/h</span></div></div>${badge}`;
+  } else {
+    const v=calcDose(drug,prep,cv.W,cv.mlh);
+    if(v===null||isNaN(v)||v<=0){box.innerHTML=`<div class="result-box empty"><div class="result-lbl">Dose calculada</div><div class="result-val empty">Preencha os campos acima</div></div>`;return;}
+    const s=inRange(v,drug.min,drug.max),cls=s==='high'?'warn':s==='low'?'info':'';
+    const badge=s==='ok'?`<div class="range-badge ok">✓ Dentro do intervalo terapêutico</div>`:s==='high'?`<div class="range-badge">⚠ Acima do máximo (${drug.max} ${drug.unit})</div>`:`<div class="range-badge low">ℹ Abaixo do mínimo (${drug.min} ${drug.unit})</div>`;
+    box.innerHTML=`<div class="result-box ${cls}"><div class="result-lbl">Dose calculada</div><div class="result-val ${cls}">${fmtV(v)}<span class="result-unit">${drug.unit}</span></div></div>${badge}`;
+  }
 }
 
 function el(id){return document.getElementById(id)}
 function on(id,ev,fn){const e=el(id);if(e)e.addEventListener(ev,fn)}
-function val(id){const e=el(id);return e?e.value:’’}
+function val(id){const e=el(id);return e?e.value:''}
 function setState(patch){Object.assign(state,patch);render()}
 
 function render(){
-const app=el(‘app’);if(!app)return;
-app.innerHTML=`<div class="header"><div class="logo">⚕</div><div><div class="app-title">PharmaCalc</div><div class="app-sub">Anestesia · UTI · Infusões</div></div></div><div id="vc"></div>`;
-const vc=el(‘vc’);
-if(state.view===‘catalog’)renderCatalog(vc);
-else if(state.view===‘calc’)renderCalc(vc);
-else renderEdit(vc);
-attachEvents();
+  const app=el('app');if(!app)return;
+  app.innerHTML=`<div class="header"><div class="logo">⚕</div><div><div class="app-title">PharmaCalc</div><div class="app-sub">Anestesia · UTI · Infusões</div></div></div><div id="vc"></div>`;
+  const vc=el('vc');
+  if(state.view==='catalog')renderCatalog(vc);
+  else if(state.view==='calc')renderCalc(vc);
+  else renderEdit(vc);
+  attachEvents();
 }
 
 function renderCatalog(c){
-const filtered=drugs.filter(d=>(state.catFilter===‘all’||d.cat===state.catFilter)&&(!state.search||d.name.toLowerCase().includes(state.search.toLowerCase())||d.abbr.toLowerCase().includes(state.search.toLowerCase())));
-c.innerHTML=` <div class="search-wrap"><span class="search-icon">⌕</span><input type="text" id="search-inp" placeholder="Buscar medicamento…" value="${state.search.replace(/"/g,'&quot;')}"></div> <div class="cats">${CATS.map(cat=>`<button class="cat-btn${state.catFilter===cat.id?' active':''}" data-cat="${cat.id}">${cat.n}</button>`).join('')}</div> <div class="drug-grid"> ${filtered.map(d=>`<button class="drug-card" data-drug="${d.id}" style="border-left-color:${CAT_COLORS[d.cat]||'#888'}">
-<div class="drug-abbr" style="color:${CAT_COLORS[d.cat]||'#888'}">${d.abbr}${d.tci?’<span class="tci-badge">TCI</span>’:’’}</div>
-<div class="drug-name">${d.name}</div>
-<div class="drug-unit">${d.unit}</div>
-</button>`).join('')} <button class="add-card" id="btn-add"><span style="font-size:22px">+</span>Adicionar</button> </div>`;
+  const filtered=drugs.filter(d=>(state.catFilter==='all'||d.cat===state.catFilter)&&(!state.search||d.name.toLowerCase().includes(state.search.toLowerCase())||d.abbr.toLowerCase().includes(state.search.toLowerCase())));
+  c.innerHTML=`
+    <div class="search-wrap"><span class="search-icon">⌕</span><input type="text" id="search-inp" placeholder="Buscar medicamento…" value="${state.search.replace(/"/g,'&quot;')}"></div>
+    <div class="cats">${CATS.map(cat=>`<button class="cat-btn${state.catFilter===cat.id?' active':''}" data-cat="${cat.id}">${cat.n}</button>`).join('')}</div>
+    <div class="drug-grid">
+      ${filtered.map(d=>`<button class="drug-card" data-drug="${d.id}" style="border-left-color:${CAT_COLORS[d.cat]||'#888'}">
+        <div class="drug-abbr" style="color:${CAT_COLORS[d.cat]||'#888'}">${d.abbr}${d.tci?'<span class="tci-badge">TCI</span>':''}</div>
+        <div class="drug-name">${d.name}</div>
+        <div class="drug-unit">${d.unit}</div>
+      </button>`).join('')}
+      <button class="add-card" id="btn-add"><span style="font-size:22px">+</span>Adicionar</button>
+    </div>`;
 }
 
 function renderCalc(c){
-const drug=getDrug(state.selId);if(!drug){setState({view:‘catalog’});return;}
-const col=CAT_COLORS[drug.cat]||’#888’;
-const si=Math.min(state.selPrep,drug.preps.length-1);
-const prepBtns=drug.preps.map((p,i)=>`<button class="prep-btn${si===i?' active':''}" data-prep="${i}"><div>${p.label}</div><div class="conc">→ ${getConcLabel(p)}</div></button>`).join(’’);
-const mode=cv.mode;
-const tciBtn=drug.tci?`<button class="btn${mode==='tci'?' btn-act':''}" id="btn-mode-tci">TCI</button>`:’’;
+  const drug=getDrug(state.selId);if(!drug){setState({view:'catalog'});return;}
+  const col=CAT_COLORS[drug.cat]||'#888';
+  const si=Math.min(state.selPrep,drug.preps.length-1);
+  const prepBtns=drug.preps.map((p,i)=>`<button class="prep-btn${si===i?' active':''}" data-prep="${i}"><div>${p.label}</div><div class="conc">→ ${getConcLabel(p)}</div></button>`).join('');
+  const mode=cv.mode;
+  const tciBtn=drug.tci?`<button class="btn${mode==='tci'?' btn-act':''}" id="btn-mode-tci">TCI</button>`:'';
 
-let fields=’’;
-if(mode===‘tci’&&drug.tci){
-const models=drug.tciModels||[];
-const modelBtns=models.length>1?`<div class="field"><label class="lbl">Modelo PK</label><div class="tci-model-row">${models.map(m=>`<button class="tci-model-btn${cv.tciModel===m?' active':''}" id="btn-tci-${m}">${m.charAt(0).toUpperCase()+m.slice(1)}</button>`).join('')}</div></div>`:’’;
-const needDemo=cv.tciModel===‘schnider’||cv.tciModel===‘minto’;
-const demoFields=needDemo?`<div class="grid3" style="margin-top:10px"> <div class="field"><label class="lbl">Idade (anos)</label><div class="num-wrap"><input type="text" inputmode="decimal" id="inp-tci-age" value="${cv.tciAge}" placeholder="40" autocomplete="off"></div></div> <div class="field"><label class="lbl">Altura (cm)</label><div class="num-wrap"><input type="text" inputmode="decimal" id="inp-tci-ht" value="${cv.tciHeight}" placeholder="170" autocomplete="off"></div></div> <div class="field"><label class="lbl">Sexo</label><select id="inp-tci-sex"><option value="M"${cv.tciSex==='M'?' selected':''}>M</option><option value="F"${cv.tciSex==='F'?' selected':''}>F</option></select></div> </div>`:’’;
-fields=`${modelBtns}<div class="grid2"> <div class="field"><label class="lbl">Peso</label><div class="num-wrap"><input type="text" inputmode="decimal" id="inp-W" value="${cv.W}" placeholder="70" autocomplete="off"><span class="uhint">kg</span></div></div> <div class="field"><label class="lbl">Cp-alvo (${drug.tciUnit})</label><div class="num-wrap"><input type="text" inputmode="decimal" id="inp-tci-cp" value="${cv.tciCp}" placeholder="${drug.tciTip||'3.0'}" autocomplete="off"><span class="uhint">${drug.tciUnit}</span></div></div> </div>${demoFields}`;
-} else {
-const needW=drug.unit.includes(‘kg’);
-const wField=needW?`<div class="field"><label class="lbl">Peso do paciente</label><div class="num-wrap"><input type="text" inputmode="decimal" id="inp-W" value="${cv.W}" placeholder="70" autocomplete="off"><span class="uhint">kg</span></div></div>`:’’;
-const dField=mode===‘dose’
-?`<div class="field"><label class="lbl">Dose</label><div class="num-wrap"><input type="text" inputmode="decimal" id="inp-dose" value="${cv.dose}" placeholder="${drug.tip}" autocomplete="off"><span class="uhint">${drug.unit}</span></div></div>`
-:`<div class="field"><label class="lbl">Velocidade de infusão</label><div class="num-wrap"><input type="text" inputmode="decimal" id="inp-mlh" value="${cv.mlh}" placeholder="10" autocomplete="off"><span class="uhint">mL/h</span></div></div>`;
-fields=wField+dField;
-}
+  let fields='';
+  if(mode==='tci'&&drug.tci){
+    const models=drug.tciModels||[];
+    const modelBtns=models.length>1?`<div class="field"><label class="lbl">Modelo PK</label><div class="tci-model-row">${models.map(m=>`<button class="tci-model-btn${cv.tciModel===m?' active':''}" id="btn-tci-${m}">${m.charAt(0).toUpperCase()+m.slice(1)}</button>`).join('')}</div></div>`:'';
+    const needDemo=cv.tciModel==='schnider'||cv.tciModel==='minto';
+    const demoFields=needDemo?`<div class="grid3" style="margin-top:10px">
+      <div class="field"><label class="lbl">Idade (anos)</label><div class="num-wrap"><input type="text" inputmode="decimal" id="inp-tci-age" value="${cv.tciAge}" placeholder="40" autocomplete="off"></div></div>
+      <div class="field"><label class="lbl">Altura (cm)</label><div class="num-wrap"><input type="text" inputmode="decimal" id="inp-tci-ht" value="${cv.tciHeight}" placeholder="170" autocomplete="off"></div></div>
+      <div class="field"><label class="lbl">Sexo</label><select id="inp-tci-sex"><option value="M"${cv.tciSex==='M'?' selected':''}>M</option><option value="F"${cv.tciSex==='F'?' selected':''}>F</option></select></div>
+    </div>`:'';
+    fields=`${modelBtns}<div class="grid2">
+      <div class="field"><label class="lbl">Peso</label><div class="num-wrap"><input type="text" inputmode="decimal" id="inp-W" value="${cv.W}" placeholder="70" autocomplete="off"><span class="uhint">kg</span></div></div>
+      <div class="field"><label class="lbl">Cp-alvo (${drug.tciUnit})</label><div class="num-wrap"><input type="text" inputmode="decimal" id="inp-tci-cp" value="${cv.tciCp}" placeholder="${drug.tciTip||'3.0'}" autocomplete="off"><span class="uhint">${drug.tciUnit}</span></div></div>
+    </div>${demoFields}`;
+  } else {
+    const needW=drug.unit.includes('kg');
+    const wField=needW?`<div class="field"><label class="lbl">Peso do paciente</label><div class="num-wrap"><input type="text" inputmode="decimal" id="inp-W" value="${cv.W}" placeholder="70" autocomplete="off"><span class="uhint">kg</span></div></div>`:'';
+    const dField=mode==='dose'
+      ?`<div class="field"><label class="lbl">Dose</label><div class="num-wrap"><input type="text" inputmode="decimal" id="inp-dose" value="${cv.dose}" placeholder="${drug.tip}" autocomplete="off"><span class="uhint">${drug.unit}</span></div></div>`
+      :`<div class="field"><label class="lbl">Velocidade de infusão</label><div class="num-wrap"><input type="text" inputmode="decimal" id="inp-mlh" value="${cv.mlh}" placeholder="10" autocomplete="off"><span class="uhint">mL/h</span></div></div>`;
+    fields=wField+dField;
+  }
 
-c.innerHTML=` <div class="back-row"><button class="btn btn-sm" id="btn-back">← Voltar</button> <div><div class="drug-heading">${drug.name}</div><div class="drug-meta">${CAT_NAMES[drug.cat]||''} · ${drug.min}–${drug.max} ${drug.unit}</div></div> <button class="btn btn-sm" id="btn-edit" style="margin-left:auto">✎ Editar</button> </div> <div class="note-card" style="border-left-color:${col}">${drug.notes}</div> <div class="field"><label class="lbl">Preparação da solução</label><div class="prep-list">${prepBtns}</div></div> <div class="mode-row"> <button class="btn${mode==='dose'?' btn-act':''}" id="btn-mode-dose">Dose → mL/h</button> <button class="btn${mode==='mlh'?' btn-act':''}" id="btn-mode-mlh">mL/h → Dose</button> ${tciBtn} </div> ${fields} <div id="result"></div>`;
-updateResult();
+  c.innerHTML=`
+    <div class="back-row"><button class="btn btn-sm" id="btn-back">← Voltar</button>
+      <div><div class="drug-heading">${drug.name}</div><div class="drug-meta">${CAT_NAMES[drug.cat]||''} · ${drug.min}–${drug.max} ${drug.unit}</div></div>
+      <button class="btn btn-sm" id="btn-edit" style="margin-left:auto">✎ Editar</button>
+    </div>
+    <div class="note-card" style="border-left-color:${col}">${drug.notes}</div>
+    <div class="field"><label class="lbl">Preparação da solução</label><div class="prep-list">${prepBtns}</div></div>
+    <div class="mode-row">
+      <button class="btn${mode==='dose'?' btn-act':''}" id="btn-mode-dose">Dose → mL/h</button>
+      <button class="btn${mode==='mlh'?' btn-act':''}" id="btn-mode-mlh">mL/h → Dose</button>
+      ${tciBtn}
+    </div>
+    ${fields}
+    <div id="result"></div>`;
+  updateResult();
 }
 
 function recompPrep(p){
-const s=parseNum(p.solute)||0,v=parseNum(p.vol)||1,su=p.sUnit;
-if(su===‘mg’){p.cMcg=s*1000/v;delete p.cU;}
-else if(su===‘mcg’){p.cMcg=s/v;delete p.cU;}
-else if(su===‘U’){p.cU=s/v;delete p.cMcg;}
-else if(su===‘mg/mL’){p.cMcg=s*1000;delete p.cU;}
-p.label=su===‘mg/mL’?`${p.solute}mg/mL (puro)`:`${p.solute}${su} em ${p.vol}mL`;
-return p;
+  const s=parseNum(p.solute)||0,v=parseNum(p.vol)||1,su=p.sUnit;
+  if(su==='mg'){p.cMcg=s*1000/v;delete p.cU;}
+  else if(su==='mcg'){p.cMcg=s/v;delete p.cU;}
+  else if(su==='U'){p.cU=s/v;delete p.cMcg;}
+  else if(su==='mg/mL'){p.cMcg=s*1000;delete p.cU;}
+  p.label=su==='mg/mL'?`${p.solute}mg/mL (puro)`:`${p.solute}${su} em ${p.vol}mL`;
+  return p;
 }
 function renderEdit(c){
-const isNew=state.view===‘new’;
-if(!state.editForm)state.editForm={id:`d_${Date.now()}`,cat:‘outros’,name:’’,abbr:’’,unit:‘mcg/kg/min’,min:0,max:100,tip:1,preps:[recompPrep({solute:1,sUnit:‘mg’,vol:100})],notes:’’};
-const f=state.editForm;
-const catOpts=CATS.filter(x=>x.id!==‘all’).map(x=>`<option value="${x.id}"${f.cat===x.id?' selected':''}>${x.n}</option>`).join(’’);
-const unitOpts=[‘mcg/kg/min’,‘mcg/kg/h’,‘mg/kg/h’,‘mcg/min’,‘mg/h’,‘U/min’,‘U/h’,‘U/kg/h’].map(u=>`<option value="${u}"${f.unit===u?' selected':''}>${u}</option>`).join(’’);
-const prepEdits=f.preps.map((p,i)=>{
-const sopts=[‘mg’,‘mcg’,‘U’,‘mg/mL’].map(s=>`<option${p.sUnit===s?' selected':''}>${s}</option>`).join(’’);
-const isPure=p.sUnit===‘mg/mL’;
-return`<div class="prep-edit"><div class="prep-edit-grid"> <div><label class="lbl">Soluto</label><input type="text" inputmode="decimal" id="pe-s-${i}" value="${p.solute}"></div> <div><label class="lbl">Unidade</label><select id="pe-u-${i}">${sopts}</select></div> <div><label class="lbl">Volume (mL)</label><input type="text" inputmode="decimal" id="pe-v-${i}" value="${isPure?'-':p.vol}"${isPure?' disabled':''}></div> <button class="del-btn" data-delidx="${i}">✕</button> </div><div class="prep-conc-out" id="pe-c-${i}">→ ${getConcLabel(p)}</div></div>`;
-}).join(’’);
-const notesPlain=f.notes.replace(/<[^>]+>/g,’ ‘).replace(/\s+/g,’ ’).trim();
-c.innerHTML=` <div class="back-row"><button class="btn btn-sm" id="btn-back">← Cancelar</button><div class="drug-heading">${isNew?'Novo medicamento':'Editar: '+f.name}</div></div> <div class="grid2"> <div class="field"><label class="lbl">Nome</label><input type="text" id="ef-name" value="${f.name}" placeholder="Noradrenalina"></div> <div class="field"><label class="lbl">Abreviação</label><input type="text" id="ef-abbr" value="${f.abbr}" placeholder="NA" maxlength="5"></div> </div> <div class="grid2"> <div class="field"><label class="lbl">Categoria</label><select id="ef-cat">${catOpts}</select></div> <div class="field"><label class="lbl">Unidade de dose</label><select id="ef-unit">${unitOpts}</select></div> </div> <div class="grid3"> <div class="field"><label class="lbl">Dose mín</label><input type="text" inputmode="decimal" id="ef-min" value="${f.min}"></div> <div class="field"><label class="lbl">Dose máx</label><input type="text" inputmode="decimal" id="ef-max" value="${f.max}"></div> <div class="field"><label class="lbl">Dose típica</label><input type="text" inputmode="decimal" id="ef-tip" value="${f.tip}"></div> </div> <div class="field"><label class="lbl">Preparação / Concentração</label>${prepEdits} <button class="btn" id="btn-addprep" style="width:100%;margin-top:6px;padding:10px">+ Adicionar preparação alternativa</button> </div> <div class="field"><label class="lbl">Observações clínicas</label><textarea id="ef-notes" rows="4" style="resize:vertical;font-size:13px">${notesPlain}</textarea></div> <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px"> ${!isNew?`<button class="danger-btn" id="btn-del">Excluir</button>`:'<div></div>'} <div class="save-row"><button class="btn" id="btn-cancel-edit">Cancelar</button><button class="save-btn" id="btn-save">Salvar</button></div> </div>`;
+  const isNew=state.view==='new';
+  if(!state.editForm)state.editForm={id:`d_${Date.now()}`,cat:'outros',name:'',abbr:'',unit:'mcg/kg/min',min:0,max:100,tip:1,preps:[recompPrep({solute:1,sUnit:'mg',vol:100})],notes:''};
+  const f=state.editForm;
+  const catOpts=CATS.filter(x=>x.id!=='all').map(x=>`<option value="${x.id}"${f.cat===x.id?' selected':''}>${x.n}</option>`).join('');
+  const unitOpts=['mcg/kg/min','mcg/kg/h','mg/kg/h','mcg/min','mg/h','U/min','U/h','U/kg/h'].map(u=>`<option value="${u}"${f.unit===u?' selected':''}>${u}</option>`).join('');
+  const prepEdits=f.preps.map((p,i)=>{
+    const sopts=['mg','mcg','U','mg/mL'].map(s=>`<option${p.sUnit===s?' selected':''}>${s}</option>`).join('');
+    const isPure=p.sUnit==='mg/mL';
+    return`<div class="prep-edit"><div class="prep-edit-grid">
+      <div><label class="lbl">Soluto</label><input type="text" inputmode="decimal" id="pe-s-${i}" value="${p.solute}"></div>
+      <div><label class="lbl">Unidade</label><select id="pe-u-${i}">${sopts}</select></div>
+      <div><label class="lbl">Volume (mL)</label><input type="text" inputmode="decimal" id="pe-v-${i}" value="${isPure?'-':p.vol}"${isPure?' disabled':''}></div>
+      <button class="del-btn" data-delidx="${i}">✕</button>
+    </div><div class="prep-conc-out" id="pe-c-${i}">→ ${getConcLabel(p)}</div></div>`;
+  }).join('');
+  const notesPlain=f.notes.replace(/<[^>]+>/g,' ').replace(/\s+/g,' ').trim();
+  c.innerHTML=`
+    <div class="back-row"><button class="btn btn-sm" id="btn-back">← Cancelar</button><div class="drug-heading">${isNew?'Novo medicamento':'Editar: '+f.name}</div></div>
+    <div class="grid2">
+      <div class="field"><label class="lbl">Nome</label><input type="text" id="ef-name" value="${f.name}" placeholder="Noradrenalina"></div>
+      <div class="field"><label class="lbl">Abreviação</label><input type="text" id="ef-abbr" value="${f.abbr}" placeholder="NA" maxlength="5"></div>
+    </div>
+    <div class="grid2">
+      <div class="field"><label class="lbl">Categoria</label><select id="ef-cat">${catOpts}</select></div>
+      <div class="field"><label class="lbl">Unidade de dose</label><select id="ef-unit">${unitOpts}</select></div>
+    </div>
+    <div class="grid3">
+      <div class="field"><label class="lbl">Dose mín</label><input type="text" inputmode="decimal" id="ef-min" value="${f.min}"></div>
+      <div class="field"><label class="lbl">Dose máx</label><input type="text" inputmode="decimal" id="ef-max" value="${f.max}"></div>
+      <div class="field"><label class="lbl">Dose típica</label><input type="text" inputmode="decimal" id="ef-tip" value="${f.tip}"></div>
+    </div>
+    <div class="field"><label class="lbl">Preparação / Concentração</label>${prepEdits}
+      <button class="btn" id="btn-addprep" style="width:100%;margin-top:6px;padding:10px">+ Adicionar preparação alternativa</button>
+    </div>
+    <div class="field"><label class="lbl">Observações clínicas</label><textarea id="ef-notes" rows="4" style="resize:vertical;font-size:13px">${notesPlain}</textarea></div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px">
+      ${!isNew?`<button class="danger-btn" id="btn-del">Excluir</button>`:'<div></div>'}
+      <div class="save-row"><button class="btn" id="btn-cancel-edit">Cancelar</button><button class="save-btn" id="btn-save">Salvar</button></div>
+    </div>`;
 }
 function readEditForm(){
-const f=state.editForm;
-f.name=val(‘ef-name’).trim();f.abbr=val(‘ef-abbr’).trim().toUpperCase();
-f.cat=val(‘ef-cat’);f.unit=val(‘ef-unit’);
-f.min=parseNum(val(‘ef-min’))||0;f.max=parseNum(val(‘ef-max’))||0;f.tip=parseNum(val(‘ef-tip’))||0;
-f.notes=val(‘ef-notes’);
-f.preps.forEach((p,i)=>{
-p.solute=parseNum(el(`pe-s-${i}`)?.value)||0;
-p.sUnit=el(`pe-u-${i}`)?.value||‘mg’;
-p.vol=p.sUnit!==‘mg/mL’?parseNum(el(`pe-v-${i}`)?.value)||1:1;
-recompPrep(p);
-});
-return f;
+  const f=state.editForm;
+  f.name=val('ef-name').trim();f.abbr=val('ef-abbr').trim().toUpperCase();
+  f.cat=val('ef-cat');f.unit=val('ef-unit');
+  f.min=parseNum(val('ef-min'))||0;f.max=parseNum(val('ef-max'))||0;f.tip=parseNum(val('ef-tip'))||0;
+  f.notes=val('ef-notes');
+  f.preps.forEach((p,i)=>{
+    p.solute=parseNum(el(`pe-s-${i}`)?.value)||0;
+    p.sUnit=el(`pe-u-${i}`)?.value||'mg';
+    p.vol=p.sUnit!=='mg/mL'?parseNum(el(`pe-v-${i}`)?.value)||1:1;
+    recompPrep(p);
+  });
+  return f;
 }
 function updatePrepConc(i){
-const f=state.editForm;if(!f||!f.preps[i])return;
-const p=f.preps[i];
-p.solute=parseNum(el(`pe-s-${i}`)?.value)||0;
-p.sUnit=el(`pe-u-${i}`)?.value||‘mg’;
-p.vol=p.sUnit!==‘mg/mL’?parseNum(el(`pe-v-${i}`)?.value)||1:1;
-recompPrep(p);
-const co=el(`pe-c-${i}`);if(co)co.textContent=`→ ${getConcLabel(p)}`;
-const vi=el(`pe-v-${i}`);if(vi)vi.disabled=(p.sUnit===‘mg/mL’);
+  const f=state.editForm;if(!f||!f.preps[i])return;
+  const p=f.preps[i];
+  p.solute=parseNum(el(`pe-s-${i}`)?.value)||0;
+  p.sUnit=el(`pe-u-${i}`)?.value||'mg';
+  p.vol=p.sUnit!=='mg/mL'?parseNum(el(`pe-v-${i}`)?.value)||1:1;
+  recompPrep(p);
+  const co=el(`pe-c-${i}`);if(co)co.textContent=`→ ${getConcLabel(p)}`;
+  const vi=el(`pe-v-${i}`);if(vi)vi.disabled=(p.sUnit==='mg/mL');
 }
 
 function attachEvents(){
-document.querySelectorAll(“input[inputmode=‘decimal’]”).forEach(enableComma);
-const v=state.view;
-if(v===‘catalog’){
-on(‘search-inp’,‘input’,e=>setState({search:e.target.value}));
-document.querySelectorAll(’.cat-btn’).forEach(btn=>btn.addEventListener(‘click’,()=>setState({catFilter:btn.dataset.cat})));
-document.querySelectorAll(’.drug-card’).forEach(btn=>btn.addEventListener(‘click’,()=>{
-const drug=getDrug(btn.dataset.drug);
-const defModel=drug?.tciModels?.[0]||’’;
-cv={W:’’,dose:’’,mlh:’’,mode:‘dose’,tciCp:’’,tciModel:defModel,tciAge:’’,tciHeight:’’,tciSex:‘M’};
-setState({view:‘calc’,selId:btn.dataset.drug,selPrep:0});
-}));
-on(‘btn-add’,‘click’,()=>{state.editForm=null;setState({view:‘new’});});
-}
-if(v===‘calc’){
-on(‘btn-back’,‘click’,()=>setState({view:‘catalog’}));
-on(‘btn-edit’,‘click’,()=>{state.editForm=JSON.parse(JSON.stringify(getDrug(state.selId)));setState({view:‘edit’});});
-document.querySelectorAll(’.prep-btn’).forEach(btn=>btn.addEventListener(‘click’,()=>{
-state.selPrep=parseInt(btn.dataset.prep)||0;
-document.querySelectorAll(’.prep-btn’).forEach(b=>b.classList.toggle(‘active’,b===btn));
-updateResult();
-}));
-on(‘btn-mode-dose’,‘click’,()=>{cv.mode=‘dose’;setState({view:‘calc’});});
-on(‘btn-mode-mlh’,‘click’,()=>{cv.mode=‘mlh’;setState({view:‘calc’});});
-on(‘btn-mode-tci’,‘click’,()=>{cv.mode=‘tci’;setState({view:‘calc’});});
-// Seletores de modelo TCI
-[‘marsh’,‘schnider’,‘minto’,‘bovill’].forEach(m=>{
-on(`btn-tci-${m}`,‘click’,()=>{cv.tciModel=m;setState({view:‘calc’});});
-});
-on(‘inp-tci-sex’,‘change’,e=>{cv.tciSex=e.target.value;updateResult();});
-// Inputs sem re-render
-on(‘inp-W’,‘input’,e=>{cv.W=e.target.value;updateResult();});
-on(‘inp-dose’,‘input’,e=>{cv.dose=e.target.value;updateResult();});
-on(‘inp-mlh’,‘input’,e=>{cv.mlh=e.target.value;updateResult();});
-on(‘inp-tci-cp’,‘input’,e=>{cv.tciCp=e.target.value;updateResult();});
-on(‘inp-tci-age’,‘input’,e=>{cv.tciAge=e.target.value;updateResult();});
-on(‘inp-tci-ht’,‘input’,e=>{cv.tciHeight=e.target.value;updateResult();});
-}
-if(v===‘edit’||v===‘new’){
-on(‘btn-back’,‘click’,()=>setState({view:v===‘new’?‘catalog’:‘calc’,editForm:null}));
-on(‘btn-cancel-edit’,‘click’,()=>setState({view:v===‘new’?‘catalog’:‘calc’,editForm:null}));
-on(‘btn-save’,‘click’,()=>{
-const f=readEditForm();if(!f.name)return;
-const idx=drugs.findIndex(d=>d.id===f.id);
-if(idx>=0)drugs[idx]={…f};else drugs.push({…f});
-setState({view:‘calc’,selId:f.id,selPrep:0,editForm:null});
-});
-on(‘btn-del’,‘click’,()=>{if(confirm(‘Excluir ‘+state.editForm?.name+’?’)){drugs=drugs.filter(d=>d.id!==state.editForm?.id);setState({view:‘catalog’,editForm:null});}});
-on(‘btn-addprep’,‘click’,()=>{readEditForm();state.editForm.preps.push(recompPrep({solute:1,sUnit:‘mg’,vol:100}));render();attachEvents();});
-document.querySelectorAll(’[data-delidx]’).forEach(btn=>btn.addEventListener(‘click’,()=>{readEditForm();state.editForm.preps.splice(parseInt(btn.dataset.delidx),1);render();attachEvents();}));
-const n=state.editForm?.preps?.length||0;
-for(let i=0;i<n;i++){[`pe-s-${i}`,`pe-u-${i}`,`pe-v-${i}`].forEach(id=>{on(id,‘input’,()=>updatePrepConc(i));on(id,‘change’,()=>updatePrepConc(i));});}
-}
+  document.querySelectorAll("input[inputmode='decimal']").forEach(enableComma);
+  const v=state.view;
+  if(v==='catalog'){
+    on('search-inp','input',e=>setState({search:e.target.value}));
+    document.querySelectorAll('.cat-btn').forEach(btn=>btn.addEventListener('click',()=>setState({catFilter:btn.dataset.cat})));
+    document.querySelectorAll('.drug-card').forEach(btn=>btn.addEventListener('click',()=>{
+      const drug=getDrug(btn.dataset.drug);
+      const defModel=drug?.tciModels?.[0]||'';
+      cv={W:'',dose:'',mlh:'',mode:'dose',tciCp:'',tciModel:defModel,tciAge:'',tciHeight:'',tciSex:'M'};
+      setState({view:'calc',selId:btn.dataset.drug,selPrep:0});
+    }));
+    on('btn-add','click',()=>{state.editForm=null;setState({view:'new'});});
+  }
+  if(v==='calc'){
+    on('btn-back','click',()=>setState({view:'catalog'}));
+    on('btn-edit','click',()=>{state.editForm=JSON.parse(JSON.stringify(getDrug(state.selId)));setState({view:'edit'});});
+    document.querySelectorAll('.prep-btn').forEach(btn=>btn.addEventListener('click',()=>{
+      state.selPrep=parseInt(btn.dataset.prep)||0;
+      document.querySelectorAll('.prep-btn').forEach(b=>b.classList.toggle('active',b===btn));
+      updateResult();
+    }));
+    on('btn-mode-dose','click',()=>{cv.mode='dose';setState({view:'calc'});});
+    on('btn-mode-mlh','click',()=>{cv.mode='mlh';setState({view:'calc'});});
+    on('btn-mode-tci','click',()=>{cv.mode='tci';setState({view:'calc'});});
+    // Seletores de modelo TCI
+    ['marsh','schnider','minto','bovill'].forEach(m=>{
+      on(`btn-tci-${m}`,'click',()=>{cv.tciModel=m;setState({view:'calc'});});
+    });
+    on('inp-tci-sex','change',e=>{cv.tciSex=e.target.value;updateResult();});
+    // Inputs sem re-render
+    on('inp-W','input',e=>{cv.W=e.target.value;updateResult();});
+    on('inp-dose','input',e=>{cv.dose=e.target.value;updateResult();});
+    on('inp-mlh','input',e=>{cv.mlh=e.target.value;updateResult();});
+    on('inp-tci-cp','input',e=>{cv.tciCp=e.target.value;updateResult();});
+    on('inp-tci-age','input',e=>{cv.tciAge=e.target.value;updateResult();});
+    on('inp-tci-ht','input',e=>{cv.tciHeight=e.target.value;updateResult();});
+  }
+  if(v==='edit'||v==='new'){
+    on('btn-back','click',()=>setState({view:v==='new'?'catalog':'calc',editForm:null}));
+    on('btn-cancel-edit','click',()=>setState({view:v==='new'?'catalog':'calc',editForm:null}));
+    on('btn-save','click',()=>{
+      const f=readEditForm();if(!f.name)return;
+      const idx=drugs.findIndex(d=>d.id===f.id);
+      if(idx>=0)drugs[idx]={...f};else drugs.push({...f});
+      setState({view:'calc',selId:f.id,selPrep:0,editForm:null});
+    });
+    on('btn-del','click',()=>{if(confirm('Excluir '+state.editForm?.name+'?')){drugs=drugs.filter(d=>d.id!==state.editForm?.id);setState({view:'catalog',editForm:null});}});
+    on('btn-addprep','click',()=>{readEditForm();state.editForm.preps.push(recompPrep({solute:1,sUnit:'mg',vol:100}));render();attachEvents();});
+    document.querySelectorAll('[data-delidx]').forEach(btn=>btn.addEventListener('click',()=>{readEditForm();state.editForm.preps.splice(parseInt(btn.dataset.delidx),1);render();attachEvents();}));
+    const n=state.editForm?.preps?.length||0;
+    for(let i=0;i<n;i++){[`pe-s-${i}`,`pe-u-${i}`,`pe-v-${i}`].forEach(id=>{on(id,'input',()=>updatePrepConc(i));on(id,'change',()=>updatePrepConc(i));});}
+  }
 }
 render();
 </script>
-
 </body>
 </html>
