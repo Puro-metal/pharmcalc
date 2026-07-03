@@ -95,6 +95,17 @@ button:active{opacity:.7}
 .save-row{display:flex;gap:8px;justify-content:flex-end;margin-top:8px}
 .danger-btn{background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:8px 14px;font-size:13px;color:#b91c1c}
 .save-btn{background:#1d4ed8;border:1px solid #1d4ed8;border-radius:8px;padding:8px 20px;font-size:13px;color:#fff;font-weight:600}
+.seg-row{display:flex;gap:6px;margin-bottom:16px}
+.cor-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
+.chk-row{display:flex;align-items:center;gap:9px;padding:11px 12px;border:1px solid #d0cec8;border-radius:8px;background:#fff;cursor:pointer;font-size:13px;color:#1a1a1a;margin-bottom:14px;line-height:1.4}
+.chk-row input{width:18px;height:18px;flex-shrink:0;-webkit-appearance:auto;appearance:auto;margin:0}
+.range-badge.danger{border-color:#fca5a5;color:#b91c1c;background:#fef2f2;font-weight:500}
+.sec-line{font-size:12px;color:#555;line-height:1.5;padding:6px 0;border-top:0.5px solid #e6ecec;display:flex;justify-content:space-between;gap:14px;margin-top:0}
+.sec-line:first-of-type{margin-top:10px}
+.sec-line b{color:#1a1a1a;font-weight:600;text-align:right;white-space:nowrap}
+.sec-line.sec-stack{flex-direction:column;align-items:flex-start;gap:3px}
+.sec-line.sec-stack b{text-align:left;white-space:normal}
+.cor-footer{border:1px solid #fca5a5;border-radius:10px;background:#fef2f2;padding:12px 14px;font-size:12px;color:#7f1d1d;line-height:1.6;margin-top:16px}
 @media(max-width:420px){
   .grid2{grid-template-columns:1fr}
   .grid3{grid-template-columns:1fr 1fr}
@@ -289,8 +300,9 @@ let drugs=[
   {id:'amio',cat:'outros',name:'Amiodarona',abbr:'AMI',unit:'mg/h',min:30,max:90,tip:60,preps:[mg(900,500)],notes:N.amio},
 ];
 
-let state={view:'catalog',selId:null,selPrep:0,catFilter:'all',search:'',editForm:null};
+let state={view:'catalog',selId:null,selPrep:0,catFilter:'all',search:'',editForm:null,corId:null};
 let cv={W:'',dose:'',mlh:'',mode:'dose',tciCp:'',tciModel:'',tciAge:'',tciHeight:'',tciSex:'M'};
+let cvc={};
 
 function getDrug(id){return drugs.find(d=>d.id===id)}
 function getConcLabel(p){
@@ -413,10 +425,15 @@ function setState(patch){Object.assign(state,patch);render()}
 
 function render(){
   const app=el('app');if(!app)return;
-  app.innerHTML=`<div class="header"><div class="logo">⚕</div><div><div class="app-title">PharmaCalc</div><div class="app-sub">Anestesia · UTI · Infusões</div></div></div><div id="vc"></div>`;
+  const corSection=state.view==='correcao'||state.view==='corcalc';
+  app.innerHTML=`<div class="header"><div class="logo">⚕</div><div><div class="app-title">PharmaCalc</div><div class="app-sub">Anestesia · UTI · Infusões</div></div></div>
+  <div class="seg-row"><button class="btn${!corSection?' btn-act':''}" id="sec-cat">Catálogo</button><button class="btn${corSection?' btn-act':''}" id="sec-cor">Correções</button></div>
+  <div id="vc"></div>`;
   const vc=el('vc');
   if(state.view==='catalog')renderCatalog(vc);
   else if(state.view==='calc')renderCalc(vc);
+  else if(state.view==='correcao')renderCorrecao(vc);
+  else if(state.view==='corcalc')renderCorCalc(vc);
   else renderEdit(vc);
   attachEvents();
 }
@@ -562,6 +579,28 @@ function updatePrepConc(i){
 function attachEvents(){
   document.querySelectorAll("input[inputmode='decimal']").forEach(enableComma);
   const v=state.view;
+  on('sec-cat','click',()=>setState({view:'catalog'}));
+  on('sec-cor','click',()=>setState({view:'correcao'}));
+  if(v==='correcao'){
+    document.querySelectorAll('.drug-card[data-cor]').forEach(btn=>btn.addEventListener('click',()=>{
+      const m=getCor(btn.dataset.cor);if(!m)return;initCvc(m);
+      setState({view:'corcalc',corId:btn.dataset.cor});
+    }));
+  }
+  if(v==='corcalc'){
+    on('cor-back','click',()=>setState({view:'correcao'}));
+    const m=getCor(state.corId);
+    (m?.inputs||[]).forEach(inp=>{
+      const id=`cor-${inp.key}`;
+      if(inp.type==='select'){
+        on(id,'change',e=>{cvc[inp.key]=e.target.value;if(inp.rerender)setState({view:'corcalc'});else updateCorrecao();});
+      }else if(inp.type==='check'){
+        on(id,'change',e=>{cvc[inp.key]=e.target.checked;updateCorrecao();});
+      }else{
+        on(id,'input',e=>{cvc[inp.key]=e.target.value;updateCorrecao();});
+      }
+    });
+  }
   if(v==='catalog'){
     on('search-inp','input',e=>setState({search:e.target.value}));
     document.querySelectorAll('.cat-btn').forEach(btn=>btn.addEventListener('click',()=>setState({catFilter:btn.dataset.cat})));
@@ -613,6 +652,424 @@ function attachEvents(){
     for(let i=0;i<n;i++){[`pe-s-${i}`,`pe-u-${i}`,`pe-v-${i}`].forEach(id=>{on(id,'input',()=>updatePrepConc(i));on(id,'change',()=>updatePrepConc(i));});}
   }
 }
+// ── Módulos de Correção ─────────────────────────────────────────────────────
+const COR_CAT_COLOR='#0e7490'; // teal
+
+// Fórmulas em funções nomeadas (puras / testáveis isoladamente)
+function act(peso,sexo,idoso){ // água corporal total (L) — Watson simplificado, ancoragem conservadora
+  const f=idoso?(sexo==='F'?0.45:0.50):(sexo==='F'?0.50:0.60);
+  return f*peso;
+}
+function naGlicose(na,glic){ // Na corrigido pela glicemia (Katz/Hillier)
+  const fator=glic>400?2.4:1.6;
+  return na+fator*(glic-100)/100;
+}
+function adrogueMadias(naSol,naSer,actL){ // ΔNa por litro de solução infundida
+  return (naSol-naSer)/(actL+1);
+}
+function deficitAguaLivre(actL,na,alvo){ return actL*(na/alvo-1); }
+function caCorrigido(ca,alb){ return ca+0.8*(4.0-alb); }
+function agCalc(na,cl,hco3){ return na-(cl+hco3); }
+function agCorrigido(ag,alb){ return ag+2.5*(4.0-alb); }
+function osmCalc(na,glic,ureia){ return 2*na+glic/18+ureia/2.8; }
+function gapOsm(osmMed,oc){ return osmMed-oc; }
+function deficitK(k){ // faixa grosseira: ~200–400 mEq por mEq/L abaixo de 4,0
+  const d=Math.max(0,4.0-k);
+  return {min:d*200,max:d*400};
+}
+
+const NaCl3=513, NaCl09=154; // mEq/L
+
+const CORRECOES=[
+  // ── Cálcio ────────────────────────────────────────────────────────────────
+  {
+    id:'ca',cat:'metab',name:'Cálcio',abbr:'Ca',desc:'correção por albumina',sub:'hipocalcemia',
+    resultLbl:'Cálcio',
+    inputs:[
+      {key:'modo',label:'Método',type:'select',rerender:true,opts:[{v:'total',l:'Ca total + albumina'},{v:'ionico',l:'Ca iônico (padrão-ouro)'}]},
+      {key:'ca',label:'Ca total',unit:'mg/dL',ph:'8.0',show:v=>v.modo==='total'},
+      {key:'alb',label:'Albumina',unit:'g/dL',ph:'4.0',show:v=>v.modo==='total'},
+      {key:'caion',label:'Ca iônico',unit:'mmol/L',ph:'1.15',show:v=>v.modo==='ionico'},
+    ],
+    compute(v){
+      const alertMg={level:'danger',text:'<b>Hipocalcemia refratária → checar Mg²⁺.</b> Sem magnésio o Ca²⁺ não sobe.'};
+      const prep=`<ul>
+        <li><b>Gluconato de cálcio 10%:</b> 10 mL = 1 g = 93 mg Ca²⁺ = 4,65 mEq (via periférica OK)</li>
+        <li><b>Cloreto de cálcio 10%:</b> 10 mL = 1 g = 273 mg Ca²⁺ = 13,6 mEq (3× mais Ca elementar — <b>via central</b>; necrose grave se extravasar)</li>
+        <li>Dose aguda/sintomática: <b>1–2 g de gluconato IV em 10 min</b> (ou 1 g de CaCl₂). Diluir em SG5%</li>
+        <li><b>Nunca</b> na mesma via que bicarbonato ou fosfato — precipita (CaCO₃ / Ca₃(PO₄)₂)</li></ul>`;
+      if(v.modo==='ionico'){
+        if(isNaN(v.caion))return{primary:null};
+        const hipo=v.caion<1.1;
+        const secI=[{label:'Referência',value:'hipocalcemia < 1,1 mmol/L'}];
+        if(hipo)secI.push({label:'Reposição',value:'1–2 g gluconato em 100 mL SG5% → 100 mL em 10 min'});
+        return{primary:{label:'Ca²⁺ iônico',value:v.caion.toFixed(2),unit:'mmol/L',tone:hipo?'warn':'ok'},
+          secondary:secI,
+          alerts:hipo?[alertMg]:[],prep};
+      }
+      if(isNaN(v.ca)||isNaN(v.alb))return{primary:null};
+      const cc=caCorrigido(v.ca,v.alb),hipo=cc<8.5;
+      const secT=[
+        {label:'Ca medido',value:v.ca.toFixed(1)+' mg/dL'},
+        {label:'Correção albumina',value:`+${(0.8*(4.0-v.alb)).toFixed(1)} mg/dL`},
+        {label:'Referência',value:'hipocalcemia < 8,5 mg/dL'}];
+      if(hipo)secT.push({label:'Reposição',value:'1–2 g gluconato em 100 mL SG5% → 100 mL em 10 min'});
+      return{primary:{label:'Ca²⁺ total corrigido',value:cc.toFixed(1),unit:'mg/dL',tone:hipo?'warn':'ok'},
+        secondary:secT,
+        alerts:hipo?[alertMg]:[],prep};
+    }
+  },
+  // ── Sódio ─────────────────────────────────────────────────────────────────
+  {
+    id:'na',cat:'metab',name:'Sódio',abbr:'Na',desc:'glicemia · hipo · hiper',sub:'3 sub-modos',
+    resultLbl:'Sódio',
+    inputs:[
+      {key:'submodo',label:'Sub-modo',type:'select',rerender:true,opts:[
+        {v:'glic',l:'Corrigir por glicemia'},{v:'hipo',l:'Hiponatremia — repor'},{v:'hiper',l:'Hipernatremia — água livre'}]},
+      {key:'na',label:'Na⁺ atual',unit:'mEq/L',ph:'120'},
+      {key:'glic',label:'Glicemia',unit:'mg/dL',ph:'100',opt:true,show:v=>v.submodo==='glic'||v.submodo==='hipo'},
+      {key:'naAlvo',label:'Na⁺ alvo',unit:'mEq/L',ph:'128',opt:true,show:v=>v.submodo==='hipo'},
+      {key:'naDesejado',label:'Na⁺ desejado',unit:'mEq/L',ph:'140',show:v=>v.submodo==='hiper'},
+      {key:'peso',label:'Peso',unit:'kg',ph:'70',show:v=>v.submodo==='hipo'||v.submodo==='hiper'},
+      {key:'sexo',label:'Sexo',type:'select',opts:[{v:'M',l:'Masculino'},{v:'F',l:'Feminino'}],show:v=>v.submodo==='hipo'||v.submodo==='hiper'},
+      {key:'idoso',label:'Idoso / sarcopênico (água corporal menor)',type:'check',def:true,show:v=>v.submodo==='hipo'||v.submodo==='hiper'},
+      {key:'cron',label:'Cronicidade',type:'select',opts:[
+        {v:'cronico',l:'Crônico (>48h ou desconhecido)'},{v:'agudo',l:'Agudo sintomático (<48h)'}],show:v=>v.submodo==='hipo'},
+      {key:'altoRisco',label:'Alto risco (hepatopata, desnutrido, K⁺ baixo, etilista)',type:'check',def:false,show:v=>v.submodo==='hipo'},
+    ],
+    compute(v){
+      // 2a — correção por glicemia
+      if(v.submodo==='glic'){
+        if(isNaN(v.na)||isNaN(v.glic))return{primary:null};
+        const nc=naGlicose(v.na,v.glic),dil=nc>=135;
+        return{primary:{label:'Na⁺ corrigido p/ glicemia',value:nc.toFixed(1),unit:'mEq/L',tone:dil?'info':'warn'},
+          secondary:[{label:'Na⁺ medido',value:v.na.toFixed(1)+' mEq/L'},{label:'Fator',value:v.glic>400?'2,4 (glic>400, Hillier)':'1,6 (Katz)'}],
+          alerts:dil?[{level:'danger',text:'Na⁺ corrigido ≥135 — hiponatremia provavelmente <b>dilucional</b> (água puxada pela glicose). Trate a glicemia, <b>não</b> reponha sódio.'}]:[],
+          prep:'<ul><li>Na⁺ corr = Na⁺ medido + fator × (glicemia − 100)/100</li><li>Fator 1,6 (Katz) · 2,4 se glicemia >400 (Hillier)</li></ul>'};
+      }
+      // aviso dilucional compartilhado (hipo)
+      const dilAlert=[];
+      if(v.submodo==='hipo'&&!isNaN(v.glic)&&v.glic>100){
+        const nc=naGlicose(v.na,v.glic);
+        if(nc>=135)dilAlert.push({level:'danger',text:`Na⁺ corrigido = ${nc.toFixed(1)} — hiponatremia provavelmente dilucional; trate a glicemia.`});
+      }
+      // 2b — hiponatremia
+      if(v.submodo==='hipo'){
+        if(isNaN(v.na)||isNaN(v.peso))return{primary:null};
+        const actL=act(v.peso,v.sexo,v.idoso);
+        const prep=`<ul><li><b>NaCl 3%:</b> 513 mEq/L &nbsp;·&nbsp; <b>NaCl 0,9%:</b> 154 mEq/L</li><li>ΔNa⁺/L = (Na⁺solução − Na⁺sérico) / (ACT + 1)</li></ul>`;
+        if(v.cron==='agudo'){
+          return{primary:{label:'NaCl 3% — bolus (agudo sintomático)',value:'100–150',unit:'mL IV em 10 min',tone:'warn'},
+            secondary:[{label:'Repetir',value:'até 2–3× · meta +4–6 mEq/L rápido'},{label:'Depois',value:'frear e seguir teto crônico'}],
+            alerts:[...dilAlert,{level:'warn',text:'Após reverter os sintomas de edema cerebral, respeitar o teto de <b>8 mEq/L/24 h</b> (6 se alto risco).'}],
+            prep};
+        }
+        const teto=v.altoRisco?6:8;
+        const dNaL=adrogueMadias(NaCl3,v.na,actL);
+        const mlh=(teto/dNaL)*1000/24;
+        const sec=[
+          {label:'ACT estimada',value:actL.toFixed(1)+' L'},
+          {label:'ΔNa⁺ por litro (NaCl 3%)',value:dNaL.toFixed(2)+' mEq/L'},
+          {label:'Teto 24 h',value:teto+' mEq/L'+(v.altoRisco?' (alto risco)':'')}];
+        if(!isNaN(v.naAlvo)&&v.naAlvo>v.na){
+          const litros=(v.naAlvo-v.na)/dNaL;
+          sec.push({label:'Volume p/ atingir alvo',value:litros.toFixed(2)+' L de NaCl 3%'});
+        }
+        return{primary:{label:'NaCl 3% — velocidade máx (crônico)',value:mlh.toFixed(0),unit:'mL/h',tone:'warn'},
+          secondary:sec,
+          alerts:[...dilAlert,{level:'warn',text:`Não ultrapassar <b>${teto} mEq/L em 24 h</b> — risco de síndrome de desmielinização osmótica.`}],
+          prep};
+      }
+      // 2c — hipernatremia
+      if(v.submodo==='hiper'){
+        if(isNaN(v.na)||isNaN(v.peso))return{primary:null};
+        const alvo=isNaN(v.naDesejado)?140:v.naDesejado;
+        const actL=act(v.peso,v.sexo,v.idoso);
+        const deficit=deficitAguaLivre(actL,v.na,alvo);
+        const insensivel=0.84; // ~35 mL/h × 24 h
+        const total=deficit+insensivel;
+        const mlh=total*1000/24;
+        return{primary:{label:'Déficit de água livre',value:deficit.toFixed(2),unit:'L',tone:'warn'},
+          secondary:[
+            {label:'ACT estimada',value:actL.toFixed(1)+' L'},
+            {label:'Na⁺ desejado',value:alvo.toFixed(0)+' mEq/L'},
+            {label:'+ perdas insensíveis (~35 mL/h)',value:'≈ '+insensivel.toFixed(2)+' L/24h'},
+            {label:'Volume total 24 h',value:total.toFixed(2)+' L (+ débito urinário)'},
+            {label:'Velocidade (SG5% / água livre)',value:mlh.toFixed(0)+' mL/h'}],
+          alerts:[{level:'warn',text:'Teto <b>10–12 mEq/L/24 h</b> — a desmielinização também ocorre na correção rápida da hipernatremia. Somar o débito urinário ao volume.'}],
+          prep:'<ul><li>Déficit H₂O (L) = ACT × (Na⁺atual / Na⁺desejado − 1)</li><li>Reposição: água livre (VO/SNG) ou <b>SG5% IV</b></li></ul>'};
+      }
+      return{primary:null};
+    }
+  },
+  // ── Fósforo ───────────────────────────────────────────────────────────────
+  {
+    id:'p',cat:'metab',name:'Fósforo',abbr:'P',desc:'déficit peso-dependente',sub:'hipofosfatemia',
+    resultLbl:'Fósforo',
+    inputs:[
+      {key:'p',label:'Fosfato sérico',unit:'mg/dL',ph:'1.5'},
+      {key:'peso',label:'Peso',unit:'kg',ph:'70'},
+    ],
+    compute(v){
+      if(isNaN(v.p)||isNaN(v.peso))return{primary:null};
+      const p=v.p,w=v.peso;
+      const prep=`<ul>
+        <li><b>Glicerofosfato de sódio (Glycophos):</b> 1 mL = 1 mmol P + 2 mmol Na (sem carga de K)</li>
+        <li><b>Fosfato de potássio:</b> ~3 mmol P + 4,4 mEq K por mL — contabilizar carga de K⁺; evitar em hipercalemia/IRC</li>
+        <li>Diluir em <b>250 mL SF</b>, infundir em <b>6 h (≈42 mL/h)</b>. <b>Não coinfundir com cálcio</b> (precipitação)</li></ul>`;
+      if(p>2.0){
+        return{primary:{label:'Fosfato',value:p.toFixed(1),unit:'mg/dL — preferir VO',tone:'info'},
+          secondary:[{label:'Conduta',value:'Leve (2,0–2,5): reposição oral'}],
+          alerts:[{level:'info',text:'Reposição IV reservada a hipofosfatemia moderada/grave ou sintomática.'}],prep};
+      }
+      let fMin,fMax,label;
+      if(p<1.0){fMin=0.32;fMax=0.64;label='Grave (<1,0)';}
+      else{fMin=0.16;fMax=0.32;label='Moderada (1,0–2,0)';}
+      let mmolMin=fMin*w,mmolMax=fMax*w;
+      const capped=mmolMax>30;mmolMax=Math.min(mmolMax,30);mmolMin=Math.min(mmolMin,30);
+      return{primary:{label:'Fósforo IV — '+label,value:`${mmolMin.toFixed(0)}–${mmolMax.toFixed(0)}`,unit:'mmol IV em 6 h',tone:'warn'},
+        secondary:[
+          {label:'Glicerofosfato de Na (1 mL = 1 mmol)',value:`${mmolMin.toFixed(0)}–${mmolMax.toFixed(0)} mL`},
+          {label:'Vazão (250 mL SF, 6 h)',value:'≈ 42 mL/h'},
+          {label:'Fator',value:`${fMin.toFixed(2)}–${fMax.toFixed(2)} mmol/kg`+(p<1.0?' (0,64 em realimentação/jejum)':'')}],
+        alerts:[
+          capped?{level:'warn',text:'Dose limitada a ~<b>30 mmol</b> por infusão — reavaliar fosfatemia antes de repetir.'}:null,
+          {level:'warn',text:'Não coinfundir com cálcio (precipitação). Cautela em IRC e hipocalcemia.'},
+        ].filter(Boolean),prep};
+    }
+  },
+  // ── Glicose ───────────────────────────────────────────────────────────────
+  {
+    id:'glicose',cat:'metab',name:'Hipoglicemia',abbr:'GLI',desc:'bolus fixo por peso',sub:'glicose',
+    resultLbl:'Glicose IV',
+    inputs:[
+      {key:'glic',label:'Glicemia',unit:'mg/dL',ph:'45'},
+      {key:'peso',label:'Peso',unit:'kg',ph:'70'},
+      {key:'faixa',label:'Faixa etária',type:'select',opts:['Adulto','Pediátrico','Neonato']},
+    ],
+    compute(v){
+      if(isNaN(v.glic))return{primary:null};
+      const hipo=v.glic<70,peso=v.peso;
+      const prep=`<ul>
+        <li>Sem acesso IV → <b>glucagon 1 mg IM</b> (0,5 mg se <25 kg)</li>
+        <li>Hipoglicemia por sulfonilureia refratária → considerar <b>octreotida</b></li>
+        <li>Alvo: glicemia >70 mg/dL · rechecar em 15 min</li></ul>`;
+      const base=[{level:'danger',text:'<b>Tiamina 100 mg IV ANTES da glicose</b> em etilista/desnutrido — risco de encefalopatia de Wernicke.'}];
+      if(!hipo)base.push({level:'info',text:'Glicemia ≥70 mg/dL — sem hipoglicemia. Se os sintomas persistem, reavaliar o diagnóstico.'});
+      const tone=hipo?'warn':'info';
+      if(v.faixa==='Adulto'){
+        return{primary:{label:'Bolus IV — Adulto',value:'50 mL',unit:'G50% (via central)',tone},
+          secondary:[{label:'Alternativa periférica',value:'G25% 100 mL'},{label:'Glicose total',value:'25 g (≈0,25 g/kg)'}],
+          alerts:base,prep};
+      }
+      if(v.faixa==='Pediátrico'){
+        const w=isNaN(peso)?null:peso;
+        const g25=w?`${(2*w).toFixed(0)}–${(4*w).toFixed(0)} mL`:'2–4 mL/kg';
+        const g10=w?`${(5*w).toFixed(0)}–${(10*w).toFixed(0)} mL`:'5–10 mL/kg';
+        return{primary:{label:'Bolus IV — Pediátrico (G25%)',value:g25,unit:'',tone},
+          secondary:[{label:'Alternativa',value:'G10% '+g10},{label:'Dose',value:'0,5–1 g/kg'}],
+          alerts:[...base,{level:'warn',text:'⚠ Evitar G50% em criança (necrose / hiperosmolaridade).'}],prep};
+      }
+      const w=isNaN(peso)?null:peso;
+      const g10=w?`${(2*w).toFixed(0)} mL`:'2 mL/kg';
+      return{primary:{label:'Bolus IV — Neonato (G10%)',value:g10,unit:'',tone},
+        secondary:[{label:'Dose',value:'0,2 g/kg'}],
+        alerts:[...base,{level:'danger',text:'⚠ NUNCA usar G50% ou G25% em neonato.'}],prep};
+    }
+  },
+  // ── Potássio ──────────────────────────────────────────────────────────────
+  {
+    id:'k',cat:'metab',name:'Potássio',abbr:'K',desc:'diluição → mL/h',sub:'limitador de taxa',
+    resultLbl:'Potássio',
+    inputs:[
+      {key:'k',label:'K⁺ sérico',unit:'mEq/L',ph:'2.8'},
+      {key:'acesso',label:'Acesso',type:'select',opts:['Periférico','Central + monitor']},
+      {key:'ampolas',label:'Ampolas KCl 19,1% (10 mL = 25 mEq)',unit:'amp',ph:'1',def:1},
+      {key:'diluente',label:'Diluente (SF)',unit:'mL',ph:'1000',def:1000},
+    ],
+    compute(v){
+      if(isNaN(v.k))return{primary:null};
+      const central=v.acesso!=='Periférico',grave=v.k<3.0;
+      const R=central?20:10;                                   // mEq/h máx seguro
+      const amp=(isNaN(v.ampolas)||v.ampolas<=0)?1:v.ampolas;
+      const dil=(isNaN(v.diluente)||v.diluente<=0)?1000:v.diluente;
+      const mEqTotal=amp*25;
+      const conc=mEqTotal/(dil/1000);                          // mEq/L
+      const mlh=R/conc*1000;                                   // mL/h p/ entregar R mEq/h
+      const horas=mEqTotal/R;                                  // duração da bolsa nessa taxa
+      const limite=central?60:40;
+      const def=deficitK(v.k);
+      const alerts=[];
+      if(conc>limite)alerts.push({level:'warn',text:`Concentração <b>${conc.toFixed(0)} mEq/L</b> excede o limite de ${limite} mEq/L para acesso ${central?'central':'periférico'} — aumentar o diluente ou reduzir ampolas.`});
+      if(grave)alerts.push({level:'warn',text:'K⁺ <3,0 com arritmia/sintoma: até <b>40 mEq/h via central</b> sob monitorização ECG contínua.'});
+      if(def.max>0)alerts.push({level:'info',text:'Déficit corporal é <b>estimativa grosseira</b> (~200–400 mEq por mEq/L abaixo de 4,0) — orienta a magnitude, não substitui a taxa segura nem a reavaliação laboratorial seriada.'});
+      alerts.push({level:'danger',text:'<b>Hipocalemia refratária → checar Mg²⁺.</b> Sem magnésio o K⁺ não sobe.'});
+      const sec=[
+        {label:'Diluição',value:`${amp} amp (${mEqTotal} mEq) em ${dil} mL → ${conc.toFixed(0)} mEq/L`},
+        {label:'Taxa máx segura',value:`${R} mEq/h (${central?'central + ECG':'periférico'})`},
+        {label:'Duração da bolsa',value:`≈ ${horas.toFixed(1)} h (repõe ${mEqTotal} mEq)`}];
+      if(def.max>0)sec.push({label:'Déficit corporal estimado',value:`≈ ${def.min.toFixed(0)}–${def.max.toFixed(0)} mEq (grosseiro)`});
+      return{primary:{label:'Velocidade de infusão',value:mlh.toFixed(0),unit:'mL/h',tone:grave?'warn':'info'},
+        secondary:sec,
+        alerts,
+        prep:`<ul><li><b>KCl 19,1%:</b> 10 mL = 25 mEq (1 ampola)</li><li>Diluição padrão sugerida: <b>1 amp em 1000 mL SF → 25 mEq/L</b> (seguro p/ via periférica)</li><li>Diluir em <b>SF</b> (SG estimula insulina → desloca K⁺ para dentro da célula)</li><li>Nunca em bolus IV direto</li></ul>`};
+    }
+  },
+  // ── Magnésio ──────────────────────────────────────────────────────────────
+  {
+    id:'mg',cat:'metab',name:'Magnésio',abbr:'Mg',desc:'dose por gravidade',sub:'limitador de taxa',
+    resultLbl:'Magnésio',
+    inputs:[
+      {key:'mg',label:'Mg²⁺ sérico',unit:'mg/dL',ph:'1.4'},
+      {key:'grave',label:'Gravidade',type:'select',opts:['Sintomático','Grave (torsades/convulsão)']},
+    ],
+    compute(v){
+      if(isNaN(v.mg))return{primary:null};
+      const grave=v.grave!=='Sintomático';
+      return{primary:{label:grave?'MgSO₄ — grave (torsades/eclâmpsia)':'MgSO₄ — sintomático',value:grave?'2 g':'1–2 g',unit:'IV em '+(grave?'2–5 min':'15 min'),tone:grave?'warn':'info'},
+        secondary:[
+          {label:'Volume (MgSO₄ 50%)',value:grave?'4 mL (2 g)':'2–4 mL (1–2 g)'},
+          {label:'Infusão',value:grave?'100 mL em 5 min':'100 mL em 15 min'},
+          {label:'Manutenção (4–6 g/24 h)',value:'500 mL em 24 h → 21 mL/h'}],
+        alerts:[
+          {level:'warn',text:'~50% da dose IV é excretada na urina — a repleção corporal é lenta; reponha por <b>dias</b>, não em dose única.'},
+          {level:'warn',text:'Cautela em IRC (acúmulo → hiporreflexia, depressão respiratória, BAV). Monitorar reflexo patelar em dose alta.'}],
+        prep:'<ul><li><b>MgSO₄ 50%:</b> 1 mL = 500 mg = 4 mEq = 2 mmol (1 g = 8,12 mEq)</li></ul>'};
+    }
+  },
+  // ── Ânion-gap + gap osmolar ─────────────────────────────────────────────────
+  {
+    id:'ag',cat:'metab',name:'Ânion-gap',abbr:'AG',desc:'+ gap osmolar',sub:'diagnóstico ácido-base',
+    resultLbl:'Ânion-gap',
+    inputs:[
+      {key:'na',label:'Na⁺',unit:'mEq/L',ph:'140'},
+      {key:'cl',label:'Cl⁻',unit:'mEq/L',ph:'104'},
+      {key:'hco3',label:'HCO₃⁻',unit:'mEq/L',ph:'24'},
+      {key:'alb',label:'Albumina',unit:'g/dL',ph:'4.0',opt:true},
+      {key:'glic',label:'Glicemia',unit:'mg/dL',ph:'90',opt:true},
+      {key:'ureia',label:'Ureia',unit:'mg/dL',ph:'30',opt:true},
+      {key:'osm',label:'Osm medida',unit:'mOsm/kg',ph:'290',opt:true},
+    ],
+    compute(v){
+      if(isNaN(v.na)||isNaN(v.cl)||isNaN(v.hco3))return{primary:null};
+      const ag=agCalc(v.na,v.cl,v.hco3);
+      let agc=ag;
+      const sec=[{label:'AG',value:ag.toFixed(1)+' (normal 8–12)'}];
+      const alerts=[];
+      if(!isNaN(v.alb)){
+        agc=agCorrigido(ag,v.alb);
+        sec.push({label:'AG corrigido p/ albumina',value:agc.toFixed(1)});
+        alerts.push({level:'warn',text:'Hipoalbuminemia <b>mascara</b> AG alto — usar sempre o AG corrigido.'});
+      }
+      const alto=agc>12;
+      if(alto&&(24-v.hco3)!==0){
+        const dd=(ag-12)/(24-v.hco3);
+        if(isFinite(dd)){
+          sec.push({label:'Δ/Δ',value:dd.toFixed(2)});
+          if(dd<1)alerts.push({level:'info',text:'Δ/Δ <1: AGMA + acidose metabólica hiperclorêmica (não-AG) concomitante.'});
+          else if(dd>2)alerts.push({level:'info',text:'Δ/Δ >2: AGMA + alcalose metabólica concomitante.'});
+        }
+      }
+      if(!isNaN(v.glic)&&!isNaN(v.ureia)){
+        const oc=osmCalc(v.na,v.glic,v.ureia);
+        sec.push({label:'Osm calculada',value:oc.toFixed(0)+' mOsm/kg'});
+        if(!isNaN(v.osm)){
+          const go=gapOsm(v.osm,oc);
+          sec.push({label:'Gap osmolar',value:go.toFixed(0)});
+          if(go>10)alerts.push({level:'danger',text:'Gap osmolar >10 — suspeitar <b>metanol, etilenoglicol, etanol, manitol ou propilenoglicol</b> (veículo de infusões).'});
+        }
+      }
+      return{primary:{label:'Ânion-gap'+(!isNaN(v.alb)?' corrigido':''),value:agc.toFixed(1),unit:'mEq/L',tone:alto?'warn':'ok'},
+        secondary:sec,alerts,
+        prep:'<ul><li>AG = Na⁺ − (Cl⁻ + HCO₃⁻) · normal 8–12</li><li>AG corr = AG + 2,5 × (4,0 − albumina)</li><li>Δ/Δ = (AG − 12) / (24 − HCO₃⁻)</li><li>Osm calc = 2×Na + glic/18 + ureia/2,8 · Gap osm = medida − calculada</li></ul>'};
+    }
+  },
+];
+
+function getCor(id){return CORRECOES.find(m=>m.id===id)}
+function normOpts(opts){return opts.map(o=>typeof o==='string'?{v:o,l:o}:o)}
+function initCvc(m){
+  cvc={};
+  m.inputs.forEach(inp=>{
+    if(inp.type==='select')cvc[inp.key]=normOpts(inp.opts)[0].v;
+    else if(inp.type==='check')cvc[inp.key]=!!inp.def;
+    else cvc[inp.key]=inp.def!=null?String(inp.def):'';
+  });
+}
+
+function renderCorrecao(c){
+  c.innerHTML=`
+    <div class="cor-grid">
+      ${CORRECOES.map(m=>`<button class="drug-card" data-cor="${m.id}" style="border-left-color:${COR_CAT_COLOR}">
+        <div class="drug-abbr" style="color:${COR_CAT_COLOR}">${m.abbr}</div>
+        <div class="drug-name">${m.name}</div>
+        <div class="drug-unit">${m.desc||''}</div>
+      </button>`).join('')}
+    </div>
+    <div class="cor-footer">⚠ Hipocalemia e hipocalcemia refratárias são frequentemente <b>hipomagnesemia não corrigida</b>. Reponha Mg²⁺ antes de insistir em K⁺/Ca²⁺.</div>`;
+}
+
+function renderCorInput(inp){
+  const v=cvc[inp.key];
+  if(inp.type==='select'){
+    const opts=normOpts(inp.opts).map(o=>`<option value="${o.v}"${v===o.v?' selected':''}>${o.l}</option>`).join('');
+    return`<div class="field"><label class="lbl">${inp.label}</label><select id="cor-${inp.key}">${opts}</select></div>`;
+  }
+  if(inp.type==='check'){
+    return`<label class="chk-row"><input type="checkbox" id="cor-${inp.key}"${v?' checked':''}> ${inp.label}</label>`;
+  }
+  const unit=inp.unit?`<span class="uhint">${inp.unit}</span>`:'';
+  const optTag=inp.opt?' <span style="text-transform:none;letter-spacing:0;color:#bbb">(opcional)</span>':'';
+  return`<div class="field"><label class="lbl">${inp.label}${optTag}</label><div class="num-wrap"><input type="text" inputmode="decimal" id="cor-${inp.key}" value="${v==null?'':v}" placeholder="${inp.ph||''}" autocomplete="off">${unit}</div></div>`;
+}
+
+function renderCorCalc(c){
+  const m=getCor(state.corId);if(!m){setState({view:'correcao'});return;}
+  const visible=m.inputs.filter(inp=>!inp.show||inp.show(cvc));
+  c.innerHTML=`
+    <div class="back-row"><button class="btn btn-sm" id="cor-back">← Voltar</button>
+      <div><div class="drug-heading">${m.name}</div><div class="drug-meta" style="color:${COR_CAT_COLOR}">Correção · ${m.sub||''}</div></div>
+    </div>
+    ${visible.map(renderCorInput).join('')}
+    <div id="cor-result" style="margin-top:4px"></div>`;
+  updateCorrecao();
+}
+
+function corAlertBadge(a){
+  const cls=a.level==='danger'?'danger':a.level==='info'?'low':'';
+  const icon=a.level==='info'?'ℹ':'⚠';
+  return`<div class="range-badge ${cls}">${icon} ${a.text}</div>`;
+}
+function updateCorrecao(){
+  const box=el('cor-result');if(!box)return;
+  const m=getCor(state.corId);if(!m)return;
+  const vals={};
+  m.inputs.forEach(inp=>{
+    const raw=cvc[inp.key];
+    if(inp.type==='select')vals[inp.key]=raw;
+    else if(inp.type==='check')vals[inp.key]=!!raw;
+    else vals[inp.key]=parseNum(raw);
+  });
+  const r=m.compute(vals);
+  if(!r||!r.primary){
+    box.innerHTML=`<div class="result-box empty"><div class="result-lbl">${m.resultLbl||'Resultado'}</div><div class="result-val empty">Preencha os campos acima</div></div>`;
+    return;
+  }
+  const p=r.primary;
+  const tone={ok:'',warn:'warn',info:'info',empty:'empty'}[p.tone||'ok'];
+  const sec=(r.secondary||[]).map(s=>{
+    const stack=(''+s.value).length>26?' sec-stack':'';
+    return`<div class="sec-line${stack}"><span>${s.label}</span><b>${s.value}</b></div>`;
+  }).join('');
+  const alerts=(r.alerts||[]).map(corAlertBadge).join('');
+  const prep=r.prep?`<div class="note-card" style="border-left-color:${COR_CAT_COLOR};margin-top:14px">${r.prep}</div>`:'';
+  box.innerHTML=`<div class="result-box ${tone}">
+    <div class="result-lbl">${p.label}</div>
+    <div class="result-val ${tone}">${p.value}${p.unit?`<span class="result-unit">${p.unit}</span>`:''}</div>
+    ${sec}
+  </div>${alerts}${prep}`;
+}
+
 render();
 </script>
 </body>
